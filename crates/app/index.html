@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Validador Modelo 720 — BOE</title>
+    <link data-trunk rel="rust" />
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --fg: #212529;
+            --card: #ffffff;
+            --border: #dee2e6;
+            --primary: #0d6efd;
+            --success: #198754;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --muted: #6c757d;
+            --radius: 8px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 0.25rem; font-size: 1.8rem; }
+        .subtitle { text-align: center; color: var(--muted); margin-bottom: 2rem; font-size: 0.9rem; }
+
+        .dropzone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            background: var(--card);
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--primary);
+            background: #e8f0fe;
+        }
+        .dropzone p { font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .dropzone small { color: var(--muted); display: block; margin-bottom: 1rem; }
+        .dropzone input[type="file"] { display: inline-block; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 1rem 0;
+        }
+        .badge-valid { background: var(--success); color: white; }
+        .badge-invalid { background: var(--danger); color: white; }
+
+        .summary {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+        }
+        .summary dl { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; }
+        .summary dt { font-weight: 600; color: var(--muted); }
+        .summary dd { margin: 0; }
+
+        .error-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: var(--card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .error-table th, .error-table td {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+        .error-table th { background: var(--bg); font-weight: 600; }
+        .error-table tr.fatal td { background: #f8d7da; }
+        .error-table tr.error td { background: #fff3cd; }
+        .error-table tr.warning td { background: #cff4fc; }
+
+        .collapsible summary {
+            cursor: pointer;
+            font-weight: 600;
+            margin: 1rem 0 0.5rem;
+            color: var(--muted);
+        }
+
+        .loading { text-align: center; color: var(--muted); margin: 2rem 0; }
+        .filename { text-align: center; color: var(--muted); margin-top: 0.5rem; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="container" id="app"></div>
+</body>
+</html>
