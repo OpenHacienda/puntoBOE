@@ -1,11 +1,15 @@
 { pkgs, ... }:
-pkgs.stdenv.mkDerivation {
-  name = "modelo720-validator";
-  src = pkgs.lib.cleanSource ../..;
-  buildInputs = with pkgs; [ trunk binaryen wasm-bindgen-cli rustup ];
-  buildPhase = ''
-    rustup target add wasm32-unknown-unknown
-    trunk build --release --dist $out
-  '';
-  installPhase = "true";
-}
+pkgs.callPackage (
+  { lib, stdenv, trunk, binaryen, wasm-bindgen-cli, rustup }:
+  stdenv.mkDerivation {
+    pname = "modelo720-validator";
+    version = "0.1.0";
+    src = lib.cleanSource ../..;
+    buildInputs = [ trunk binaryen wasm-bindgen-cli rustup ];
+    buildPhase = ''
+      rustup target add wasm32-unknown-unknown
+      trunk build --release --dist $out
+    '';
+    installPhase = "true";
+  }
+) {}
