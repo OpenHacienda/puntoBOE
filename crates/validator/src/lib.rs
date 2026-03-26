@@ -54,17 +54,6 @@ impl ValidationError {
         }
     }
 
-    fn error(code: &str, line: usize, field: &str, message: &str) -> Self {
-        Self {
-            code: code.to_string(),
-            line,
-            position: None,
-            field: field.to_string(),
-            message: message.to_string(),
-            severity: Severity::Error,
-        }
-    }
-
     fn error_pos(code: &str, line: usize, pos: (usize, usize), field: &str, message: &str) -> Self {
         Self {
             code: code.to_string(),

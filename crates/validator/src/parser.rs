@@ -50,11 +50,6 @@ pub fn is_numeric(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_ascii_digit())
 }
 
-/// Parse a numeric field (right-aligned, zero-padded).
-pub fn parse_num(s: &str) -> Option<u64> {
-    s.trim().parse::<u64>().ok()
-}
-
 /// Validate a date in AAAAMMDD format. Returns true if valid or "00000000".
 pub fn validate_date(s: &str) -> bool {
     if s == "00000000" {
