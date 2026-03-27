@@ -54,9 +54,13 @@ fn Main() -> impl IntoView {
         move |name: String, bytes: Vec<u8>| {
             set_file_name.set(name);
             set_loading.set(true);
-            let r = validate(&bytes);
-            set_result.set(Some(r));
-            set_loading.set(false);
+            // Yield to the browser so the loading spinner can render before
+            // validate() blocks the thread.
+            leptos::task::spawn_local(async move {
+                let r = validate(&bytes);
+                set_result.set(Some(r));
+                set_loading.set(false);
+            });
         }
     };
 
@@ -273,8 +277,9 @@ fn read_file(file: web_sys::File, callback: impl FnOnce(Vec<u8>) + 'static) {
     let gloo_file = GlooFile::from(file);
     // ReaderTask must be kept alive until the callback fires; dropping it aborts the read.
     let task = read_as_bytes(&gloo_file, move |result| {
-        if let Ok(bytes) = result {
-            callback(bytes);
+        match result {
+            Ok(bytes) => callback(bytes),
+            Err(e) => leptos::logging::error!("Error leyendo fichero: {:?}", e),
         }
     });
     std::mem::forget(task);

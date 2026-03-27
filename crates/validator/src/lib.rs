@@ -275,10 +275,20 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     // Cross-validations
     cross::validate_cross(t1, &t2_records, &mut errors, &mut warnings);
 
-    // Build summary
-    let total_t2_declarado = t1.raw[135..144].trim().parse::<usize>().unwrap_or(0);
-    let suma_val1_t1 = parse_signed_amount(&t1.raw[144..145], &t1.raw[145..162]);
-    let suma_val2_t1 = parse_signed_amount(&t1.raw[162..163], &t1.raw[163..180]);
+    // Build summary — use parser::field() (char-based) throughout; raw byte slices
+    // are wrong whenever the nombre contains accented UTF-8 characters (á, é, ñ, …).
+    let total_t2_declarado = parser::field(&t1.raw, 136, 144)
+        .trim()
+        .parse::<usize>()
+        .unwrap_or(0);
+    let suma_val1_t1 = parse_signed_amount(
+        &parser::field(&t1.raw, 145, 145),
+        &parser::field(&t1.raw, 146, 162),
+    );
+    let suma_val2_t1 = parse_signed_amount(
+        &parser::field(&t1.raw, 163, 163),
+        &parser::field(&t1.raw, 164, 180),
+    );
 
     let records: Vec<T2Detail> = t2_records
         .iter()
@@ -307,8 +317,8 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
 
     let summary = FileSummary {
         ejercicio: t1.ejercicio.clone(),
-        nif_declarante: t1.raw[8..17].trim().to_string(),
-        nombre_declarante: t1.raw[17..57].trim().to_string(),
+        nif_declarante: parser::field(&t1.raw, 9, 17).trim().to_string(),
+        nombre_declarante: parser::field(&t1.raw, 18, 57).trim().to_string(),
         total_registros_t2_declarado: total_t2_declarado,
         total_registros_t2_real: t2_records.len(),
         suma_val1: suma_val1_t1,

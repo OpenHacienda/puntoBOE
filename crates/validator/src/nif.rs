@@ -12,10 +12,10 @@ pub fn validate_nif(nif: &str) -> bool {
     match first {
         // NIE: X, Y, Z
         'X' | 'Y' | 'Z' => validate_nie(nif),
-        // CIF: starts with a letter (A-W)
-        'A'..='W' if first != 'X' && first != 'Y' && first != 'Z' => validate_cif(nif),
-        // NIF with leading K, L, M (special NIFs)
+        // Special NIFs: K, L, M — must come before A..=W to avoid being caught by CIF arm
         'K' | 'L' | 'M' => validate_nif_special(nif),
+        // CIF: starts with a letter A-W (excluding K, L, M handled above)
+        'A'..='W' => validate_cif(nif),
         // Standard NIF: 8 digits + letter
         '0'..='9' => {
             if !last.is_ascii_alphabetic() {

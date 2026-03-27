@@ -9,6 +9,7 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
+    rustup default stable
     rustup target add wasm32-unknown-unknown
     rustup component add rust-analyzer
   '';
