@@ -1,5 +1,5 @@
-use crate::parser::*;
 use crate::ValidationError;
+use crate::parser::*;
 use std::collections::HashMap;
 
 pub fn validate_cross(
@@ -16,8 +16,14 @@ pub fn validate_cross(
     let total_t2_real = t2_records.len();
     if total_t2_declared != total_t2_real {
         errors.push(ValidationError::error_pos(
-            "E107", t1.line, (136, 144), "TOTAL_REGISTROS_T2",
-            &format!("TOTAL_REGISTROS_T2 declarado ({}) != real ({})", total_t2_declared, total_t2_real),
+            "E107",
+            t1.line,
+            (136, 144),
+            "TOTAL_REGISTROS_T2",
+            &format!(
+                "TOTAL_REGISTROS_T2 declarado ({}) != real ({})",
+                total_t2_declared, total_t2_real
+            ),
         ));
     }
 
@@ -38,8 +44,14 @@ pub fn validate_cross(
 
     if val1_t1 != sum_val1 {
         errors.push(ValidationError::error_pos(
-            "E108", t1.line, (145, 162), "SUMA_VAL1",
-            &format!("SUMA_VAL1 declarada ({}) != suma real ({})", val1_t1, sum_val1),
+            "E108",
+            t1.line,
+            (145, 162),
+            "SUMA_VAL1",
+            &format!(
+                "SUMA_VAL1 declarada ({}) != suma real ({})",
+                val1_t1, sum_val1
+            ),
         ));
     }
 
@@ -60,8 +72,14 @@ pub fn validate_cross(
 
     if val2_t1 != sum_val2 {
         errors.push(ValidationError::error_pos(
-            "E109", t1.line, (163, 180), "SUMA_VAL2",
-            &format!("SUMA_VAL2 declarada ({}) != suma real ({})", val2_t1, sum_val2),
+            "E109",
+            t1.line,
+            (163, 180),
+            "SUMA_VAL2",
+            &format!(
+                "SUMA_VAL2 declarada ({}) != suma real ({})",
+                val2_t1, sum_val2
+            ),
         ));
     }
 
@@ -81,8 +99,13 @@ pub fn validate_cross(
         if lines.len() > 1 {
             for &line in lines {
                 warnings.push(ValidationError::warning(
-                    "W005", line, "IDENTIFICACION_VALORES",
-                    &format!("Múltiples registros con ISIN {} y NIF_DECLARADO {} (líneas {:?})", isin, nif, lines),
+                    "W005",
+                    line,
+                    "IDENTIFICACION_VALORES",
+                    &format!(
+                        "Múltiples registros con ISIN {} y NIF_DECLARADO {} (líneas {:?})",
+                        isin, nif, lines
+                    ),
                 ));
             }
         }

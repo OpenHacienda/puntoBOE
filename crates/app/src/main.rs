@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos::*;
-use validator720::{validate, Severity, ValidationError, ValidationResult};
+use validator720::{Severity, ValidationError, ValidationResult, validate};
 use wasm_bindgen::prelude::*;
 use web_sys::{DragEvent, Event, HtmlInputElement};
 
@@ -56,8 +56,19 @@ fn App() -> impl IntoView {
             <Show when=move || !get_file_name.get().is_empty()>
                 <div class="flex justify-center mt-3">
                     <div class="badge badge-outline badge-lg gap-2 font-mono text-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
                         </svg>
                         {move || get_file_name.get()}
                     </div>
@@ -73,13 +84,22 @@ fn App() -> impl IntoView {
             </Show>
 
             // Results
-            <Show when=move || get_result.get().is_some()>
+            <Show when=move || {
+                get_result.get().is_some()
+            }>
                 {move || {
                     let r = get_result.get().unwrap();
                     view! {
                         <div class="animate-in fade-in mt-6 space-y-6">
-                            <StatusBadge is_valid=r.is_valid error_count=r.errors.len() warning_count=r.warnings.len() />
-                            {r.summary.as_ref().map(|s| view! { <SummaryPanel summary=s.clone() /> })}
+                            <StatusBadge
+                                is_valid=r.is_valid
+                                error_count=r.errors.len()
+                                warning_count=r.warnings.len()
+                            />
+                            {r
+                                .summary
+                                .as_ref()
+                                .map(|s| view! { <SummaryPanel summary=s.clone() /> })}
                             <ErrorList errors=r.errors.clone() />
                             <WarningList warnings=r.warnings.clone() />
                         </div>
@@ -136,16 +156,40 @@ fn DropZone(on_file: impl Fn(String, Vec<u8>) + Clone + 'static) -> impl IntoVie
         >
             <div class="card-body items-center text-center py-12">
                 <div class="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 group-hover:-translate-y-1 transition-transform duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-8 w-8 text-primary"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        />
                     </svg>
                 </div>
                 <h2 class="card-title text-lg">"Arrastra tu fichero .720 aqui"</h2>
-                <p class="text-base-content/50 text-sm">"o pulsa para seleccionar desde tu equipo"</p>
+                <p class="text-base-content/50 text-sm">
+                    "o pulsa para seleccionar desde tu equipo"
+                </p>
                 <div class="card-actions mt-4">
                     <div class="btn btn-primary btn-sm gap-2 pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                            />
                         </svg>
                         "Seleccionar fichero"
                     </div>
@@ -162,8 +206,8 @@ fn DropZone(on_file: impl Fn(String, Vec<u8>) + Clone + 'static) -> impl IntoVie
 }
 
 fn read_file(file: web_sys::File, callback: impl FnOnce(Vec<u8>) + 'static) {
-    use gloo_file::callbacks::read_as_bytes;
     use gloo_file::File as GlooFile;
+    use gloo_file::callbacks::read_as_bytes;
 
     let gloo_file = GlooFile::from(file);
     read_as_bytes(&gloo_file, move |result| {
@@ -178,8 +222,19 @@ fn StatusBadge(is_valid: bool, error_count: usize, warning_count: usize) -> impl
     if is_valid {
         view! {
             <div class="alert alert-success shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-6 w-6 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                 </svg>
                 <div>
                     <h3 class="font-bold">"Fichero valido"</h3>
@@ -192,20 +247,33 @@ fn StatusBadge(is_valid: bool, error_count: usize, warning_count: usize) -> impl
                     </div>
                 </div>
             </div>
-        }.into_any()
+        }
+        .into_any()
     } else {
         let detail = format!("{} errores encontrados", error_count);
         view! {
             <div class="alert alert-error shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-6 w-6 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                 </svg>
                 <div>
                     <h3 class="font-bold">"Fichero invalido"</h3>
                     <div class="text-xs opacity-80">{detail}</div>
                 </div>
             </div>
-        }.into_any()
+        }
+        .into_any()
     }
 }
 
@@ -302,31 +370,36 @@ fn ErrorList(errors: Vec<ValidationError>) -> impl IntoView {
         return view! { <div></div> }.into_any();
     }
     let count_str = format!("{}", errors.len());
-    let rows: Vec<_> = errors.into_iter().map(|e| {
-        let severity_class = match e.severity {
-            Severity::Fatal => "bg-error/10",
-            Severity::Error => "bg-warning/10",
-            Severity::Warning => "bg-info/10",
-        };
-        let badge_class = match e.severity {
-            Severity::Fatal => "badge badge-error badge-sm font-mono",
-            Severity::Error => "badge badge-warning badge-sm font-mono",
-            Severity::Warning => "badge badge-info badge-sm font-mono",
-        };
-        let code = e.code;
-        let line = format!("{}", e.line);
-        let field = e.field;
-        let message = e.message;
-        let row_class = format!("hover:bg-base-200 transition-colors {}", severity_class);
-        view! {
-            <tr class=row_class>
-                <td><span class=badge_class>{code}</span></td>
-                <td class="font-mono text-sm">{line}</td>
-                <td class="font-mono text-xs text-base-content/50">{field}</td>
-                <td class="text-sm">{message}</td>
-            </tr>
-        }
-    }).collect();
+    let rows: Vec<_> = errors
+        .into_iter()
+        .map(|e| {
+            let severity_class = match e.severity {
+                Severity::Fatal => "bg-error/10",
+                Severity::Error => "bg-warning/10",
+                Severity::Warning => "bg-info/10",
+            };
+            let badge_class = match e.severity {
+                Severity::Fatal => "badge badge-error badge-sm font-mono",
+                Severity::Error => "badge badge-warning badge-sm font-mono",
+                Severity::Warning => "badge badge-info badge-sm font-mono",
+            };
+            let code = e.code;
+            let line = format!("{}", e.line);
+            let field = e.field;
+            let message = e.message;
+            let row_class = format!("hover:bg-base-200 transition-colors {}", severity_class);
+            view! {
+                <tr class=row_class>
+                    <td>
+                        <span class=badge_class>{code}</span>
+                    </td>
+                    <td class="font-mono text-sm">{line}</td>
+                    <td class="font-mono text-xs text-base-content/50">{field}</td>
+                    <td class="text-sm">{message}</td>
+                </tr>
+            }
+        })
+        .collect();
 
     view! {
         <div class="card bg-base-100 shadow-xl">
@@ -345,14 +418,13 @@ fn ErrorList(errors: Vec<ValidationError>) -> impl IntoView {
                                 <th>"Descripcion"</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {rows}
-                        </tbody>
+                        <tbody>{rows}</tbody>
                     </table>
                 </div>
             </div>
         </div>
-    }.into_any()
+    }
+    .into_any()
 }
 
 #[component]
@@ -361,27 +433,31 @@ fn WarningList(warnings: Vec<ValidationError>) -> impl IntoView {
         return view! { <div></div> }.into_any();
     }
     let count_str = format!("{}", warnings.len());
-    let rows: Vec<_> = warnings.into_iter().map(|e| {
-        let code = e.code;
-        let line = format!("{}", e.line);
-        let field = e.field;
-        let message = e.message;
-        view! {
-            <tr class="hover:bg-base-200 transition-colors bg-warning/5">
-                <td><span class="badge badge-warning badge-sm font-mono">{code}</span></td>
-                <td class="font-mono text-sm">{line}</td>
-                <td class="font-mono text-xs text-base-content/50">{field}</td>
-                <td class="text-sm">{message}</td>
-            </tr>
-        }
-    }).collect();
+    let rows: Vec<_> = warnings
+        .into_iter()
+        .map(|e| {
+            let code = e.code;
+            let line = format!("{}", e.line);
+            let field = e.field;
+            let message = e.message;
+            view! {
+                <tr class="hover:bg-base-200 transition-colors bg-warning/5">
+                    <td>
+                        <span class="badge badge-warning badge-sm font-mono">{code}</span>
+                    </td>
+                    <td class="font-mono text-sm">{line}</td>
+                    <td class="font-mono text-xs text-base-content/50">{field}</td>
+                    <td class="text-sm">{message}</td>
+                </tr>
+            }
+        })
+        .collect();
 
     view! {
         <div class="collapse collapse-arrow bg-base-100 shadow-xl">
             <input type="checkbox" />
             <div class="collapse-title font-semibold flex items-center gap-3">
-                "Avisos"
-                <span class="badge badge-warning badge-sm">{count_str}</span>
+                "Avisos" <span class="badge badge-warning badge-sm">{count_str}</span>
             </div>
             <div class="collapse-content p-0">
                 <div class="overflow-x-auto">
@@ -394,12 +470,11 @@ fn WarningList(warnings: Vec<ValidationError>) -> impl IntoView {
                                 <th>"Descripcion"</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {rows}
-                        </tbody>
+                        <tbody>{rows}</tbody>
                     </table>
                 </div>
             </div>
         </div>
-    }.into_any()
+    }
+    .into_any()
 }

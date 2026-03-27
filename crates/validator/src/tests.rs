@@ -1,14 +1,17 @@
 use crate::*;
 
 /// Build a valid Type 1 record (500 chars).
-fn make_t1(
-    nif: &str,
-    nombre: &str,
-    total_t2: usize,
-    sum_val1: i64,
-    sum_val2: i64,
-) -> String {
-    make_t1_full(nif, nombre, total_t2, sum_val1, sum_val2, ' ', ' ', "0000000000000")
+fn make_t1(nif: &str, nombre: &str, total_t2: usize, sum_val1: i64, sum_val2: i64) -> String {
+    make_t1_full(
+        nif,
+        nombre,
+        total_t2,
+        sum_val1,
+        sum_val2,
+        ' ',
+        ' ',
+        "0000000000000",
+    )
 }
 
 fn make_t1_full(
@@ -35,9 +38,17 @@ fn make_t1_full(
     rec.push(dec_sust);
     rec.push_str(&format!("{:<13}", num_dec_anterior));
     rec.push_str(&format!("{:09}", total_t2));
-    if sum_val1 < 0 { rec.push('N'); } else { rec.push(' '); }
+    if sum_val1 < 0 {
+        rec.push('N');
+    } else {
+        rec.push(' ');
+    }
     rec.push_str(&format!("{:017}", sum_val1.unsigned_abs()));
-    if sum_val2 < 0 { rec.push('N'); } else { rec.push(' '); }
+    if sum_val2 < 0 {
+        rec.push('N');
+    } else {
+        rec.push(' ');
+    }
     rec.push_str(&format!("{:017}", sum_val2.unsigned_abs()));
     rec.push_str(&" ".repeat(320));
     assert_eq!(rec.chars().count(), 500, "T1 record must be 500 chars");
@@ -53,9 +64,25 @@ fn make_t2_cuenta(
     val2: i64,
 ) -> String {
     make_t2_full(
-        nif_declarante, nif_declarado, nombre, val1, val2,
-        '1', 'C', '1', "CH", '0', "            ", 'I',
-        "20240101", 'A', "00000000", ' ', "000000000000", ' ', "10000",
+        nif_declarante,
+        nif_declarado,
+        nombre,
+        val1,
+        val2,
+        '1',
+        'C',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        'I',
+        "20240101",
+        'A',
+        "00000000",
+        ' ',
+        "000000000000",
+        ' ',
+        "10000",
     )
 }
 
@@ -141,11 +168,19 @@ fn make_t2_full(
     // pos 424-431: fecha extincion
     rec.push_str(fecha_ext);
     // pos 432: signo val1
-    if val1 < 0 { rec.push('N'); } else { rec.push(' '); }
+    if val1 < 0 {
+        rec.push('N');
+    } else {
+        rec.push(' ');
+    }
     // pos 433-446: valoracion1 (14 digits)
     rec.push_str(&format!("{:014}", val1.unsigned_abs()));
     // pos 447: signo val2
-    if val2 < 0 { rec.push('N'); } else { rec.push(' '); }
+    if val2 < 0 {
+        rec.push('N');
+    } else {
+        rec.push(' ');
+    }
     // pos 448-461: valoracion2 (14 digits)
     rec.push_str(&format!("{:014}", val2.unsigned_abs()));
     // pos 462: clave represent valores
@@ -158,7 +193,12 @@ fn make_t2_full(
     rec.push_str(&format!("{:>5}", porcentaje));
     // pos 481-500: blancos (20)
     rec.push_str(&" ".repeat(20));
-    assert_eq!(rec.chars().count(), 500, "T2 record must be 500 chars, got {}", rec.chars().count());
+    assert_eq!(
+        rec.chars().count(),
+        500,
+        "T2 record must be 500 chars, got {}",
+        rec.chars().count()
+    );
     rec
 }
 
@@ -182,7 +222,11 @@ fn has_warning(result: &ValidationResult, code: &str) -> bool {
 fn test_fixture_valid() {
     let bytes = include_bytes!("../../../tests/fixtures/valid.720");
     let result = validate(bytes);
-    assert!(result.is_valid, "valid.720 should pass, errors: {:?}", result.errors);
+    assert!(
+        result.is_valid,
+        "valid.720 should pass, errors: {:?}",
+        result.errors
+    );
     let s = result.summary.unwrap();
     assert_eq!(s.total_registros_t2_real, 2);
     assert_eq!(s.ejercicio, "2024");
@@ -194,8 +238,11 @@ fn test_fixture_invalid() {
     let result = validate(bytes);
     assert!(!result.is_valid, "invalid.720 should fail");
     // Should have NIF error, T2 count mismatch, and bad date
-    assert!(has_error(&result, "E102") || has_error(&result, "E107") || has_error(&result, "E218"),
-        "Expected at least one known error, got: {:?}", result.errors);
+    assert!(
+        has_error(&result, "E102") || has_error(&result, "E107") || has_error(&result, "E218"),
+        "Expected at least one known error, got: {:?}",
+        result.errors
+    );
 }
 
 // ─── Structural (Fatal) ──────────────────────────────────────────────
@@ -208,7 +255,11 @@ fn test_valid_single_record() {
     let t2 = make_t2_cuenta("12345678Z", "12345678Z", "GARCIA LOPEZ JUAN", val1, val2);
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
-    assert!(result.is_valid, "Expected valid, errors: {:?}", result.errors);
+    assert!(
+        result.is_valid,
+        "Expected valid, errors: {:?}",
+        result.errors
+    );
     let summary = result.summary.unwrap();
     assert_eq!(summary.ejercicio, "2024");
     assert_eq!(summary.nif_declarante, "12345678Z");
@@ -254,7 +305,9 @@ fn test_unknown_record_type() {
     // Valid T1 followed by a record with type '3'
     let t1 = make_t1("12345678Z", "NOMBRE", 0, 0, 0);
     let mut bad = make_t2_cuenta("12345678Z", "12345678Z", "NOMBRE", 0, 0);
-    unsafe { bad.as_bytes_mut()[0] = b'3'; }
+    unsafe {
+        bad.as_bytes_mut()[0] = b'3';
+    }
     let bytes = build_file(&[t1, bad]);
     let result = validate(&bytes);
     assert!(!result.is_valid);
@@ -295,7 +348,9 @@ fn test_ejercicio_non_numeric() {
 fn test_e101_tipo_soporte() {
     let mut t1 = make_t1("12345678Z", "NOMBRE", 0, 0, 0);
     // pos 58 (index 57) must be 'T'
-    unsafe { t1.as_bytes_mut()[57] = b'X'; }
+    unsafe {
+        t1.as_bytes_mut()[57] = b'X';
+    }
     let bytes = build_file(&[t1]);
     let result = validate(&bytes);
     assert!(has_error(&result, "E101"));
@@ -335,10 +390,7 @@ fn test_e104_num_identificativo() {
 
 #[test]
 fn test_e105_both_complementaria_and_sustitutiva() {
-    let t1 = make_t1_full(
-        "12345678Z", "NOMBRE", 0, 0, 0,
-        'C', 'S', "7200000000002",
-    );
+    let t1 = make_t1_full("12345678Z", "NOMBRE", 0, 0, 0, 'C', 'S', "7200000000002");
     let bytes = build_file(&[t1]);
     let result = validate(&bytes);
     assert!(has_error(&result, "E105"));
@@ -346,10 +398,7 @@ fn test_e105_both_complementaria_and_sustitutiva() {
 
 #[test]
 fn test_e106_sustitutiva_without_anterior() {
-    let t1 = make_t1_full(
-        "12345678Z", "NOMBRE", 0, 0, 0,
-        ' ', 'S', "0000000000000",
-    );
+    let t1 = make_t1_full("12345678Z", "NOMBRE", 0, 0, 0, ' ', 'S', "0000000000000");
     let bytes = build_file(&[t1]);
     let result = validate(&bytes);
     assert!(has_error(&result, "E106"));
@@ -359,7 +408,9 @@ fn test_e106_sustitutiva_without_anterior() {
 fn test_e110_blancos_not_blank() {
     let mut t1 = make_t1("12345678Z", "NOMBRE", 0, 0, 0);
     // Put non-blank at pos 181 (index 180)
-    unsafe { t1.as_bytes_mut()[180] = b'X'; }
+    unsafe {
+        t1.as_bytes_mut()[180] = b'X';
+    }
     let bytes = build_file(&[t1]);
     let result = validate(&bytes);
     assert!(has_error(&result, "E110"));
@@ -407,7 +458,11 @@ fn test_multiple_t2_records() {
     let t2b = make_t2_cuenta("12345678Z", "00000000T", "PEREZ MARTINEZ ANA", val1_b, 0);
     let bytes = build_file(&[t1, t2a, t2b]);
     let result = validate(&bytes);
-    assert!(result.is_valid, "Expected valid, errors: {:?}", result.errors);
+    assert!(
+        result.is_valid,
+        "Expected valid, errors: {:?}",
+        result.errors
+    );
     assert_eq!(result.summary.unwrap().total_registros_t2_real, 2);
 }
 
@@ -444,9 +499,25 @@ fn test_e203_empty_nombre_declarado() {
 fn test_e204_clave_condicion_out_of_range() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '0', 'C', '1', "CH", '0', "            ", 'I',
-        "20240101", 'A', "00000000", ' ', "000000000000", ' ', "10000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '0',
+        'C',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        'I',
+        "20240101",
+        'A',
+        "00000000",
+        ' ',
+        "000000000000",
+        ' ',
+        "10000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -457,9 +528,25 @@ fn test_e204_clave_condicion_out_of_range() {
 fn test_e206_invalid_clave_tipo_bien() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '1', 'X', '1', "CH", '0', "            ", ' ',
-        "20240101", 'A', "00000000", ' ', "000000000000", ' ', "10000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '1',
+        'X',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        ' ',
+        "20240101",
+        'A',
+        "00000000",
+        ' ',
+        "000000000000",
+        ' ',
+        "10000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -471,9 +558,25 @@ fn test_e207_invalid_subclave() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     // C with subclave 9 (invalid, must be 1-5)
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '1', 'C', '9', "CH", '0', "            ", 'I',
-        "20240101", 'A', "00000000", ' ', "000000000000", ' ', "10000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '1',
+        'C',
+        '9',
+        "CH",
+        '0',
+        "            ",
+        'I',
+        "20240101",
+        'A',
+        "00000000",
+        ' ',
+        "000000000000",
+        ' ',
+        "10000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -484,9 +587,25 @@ fn test_e207_invalid_subclave() {
 fn test_e208_subclave_not_zero_for_i() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '1', 'I', '1', "CH", '0', "            ", ' ',
-        "20240101", 'A', "00000000", 'A', "000100000000", ' ', "10000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '1',
+        'I',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        ' ',
+        "20240101",
+        'A',
+        "00000000",
+        'A',
+        "000100000000",
+        ' ',
+        "10000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -497,9 +616,25 @@ fn test_e208_subclave_not_zero_for_i() {
 fn test_e220_origen_invalid() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '1', 'C', '1', "CH", '0', "            ", 'I',
-        "20240101", 'X', "00000000", ' ', "000000000000", ' ', "10000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '1',
+        'C',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        'I',
+        "20240101",
+        'X',
+        "00000000",
+        ' ',
+        "000000000000",
+        ' ',
+        "10000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -510,9 +645,25 @@ fn test_e220_origen_invalid() {
 fn test_e221_fecha_extincion_zeros_when_origen_c() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '1', 'C', '1', "CH", '0', "            ", 'I',
-        "20240101", 'C', "00000000", ' ', "000000000000", ' ', "10000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '1',
+        'C',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        'I',
+        "20240101",
+        'C',
+        "00000000",
+        ' ',
+        "000000000000",
+        ' ',
+        "10000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -523,9 +674,25 @@ fn test_e221_fecha_extincion_zeros_when_origen_c() {
 fn test_e222_fecha_extincion_not_zeros_when_origen_a() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '1', 'C', '1', "CH", '0', "            ", 'I',
-        "20240101", 'A', "20241231", ' ', "000000000000", ' ', "10000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '1',
+        'C',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        'I',
+        "20240101",
+        'A',
+        "20241231",
+        ' ',
+        "000000000000",
+        ' ',
+        "10000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -539,7 +706,10 @@ fn test_e233_ejercicio_mismatch() {
     // Change ejercicio to 2025 at pos 5-8 (index 4-7)
     unsafe {
         let b = t2.as_bytes_mut();
-        b[4] = b'2'; b[5] = b'0'; b[6] = b'2'; b[7] = b'5';
+        b[4] = b'2';
+        b[5] = b'0';
+        b[6] = b'2';
+        b[7] = b'5';
     }
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -550,7 +720,9 @@ fn test_e233_ejercicio_mismatch() {
 fn test_e232_blancos_not_blank() {
     let mut t2 = make_t2_cuenta("12345678Z", "12345678Z", "NOMBRE", 100, 0);
     // pos 481 (index 480)
-    unsafe { t2.as_bytes_mut()[480] = b'X'; }
+    unsafe {
+        t2.as_bytes_mut()[480] = b'X';
+    }
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -563,9 +735,25 @@ fn test_e232_blancos_not_blank() {
 fn test_w001_future_fecha_incorporacion() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '1', 'C', '1', "CH", '0', "            ", 'I',
-        "20250601", 'A', "00000000", ' ', "000000000000", ' ', "10000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '1',
+        'C',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        'I',
+        "20250601",
+        'A',
+        "00000000",
+        ' ',
+        "000000000000",
+        ' ',
+        "10000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -576,9 +764,25 @@ fn test_w001_future_fecha_incorporacion() {
 fn test_w003_zero_porcentaje() {
     let t1 = make_t1("12345678Z", "NOMBRE", 1, 100, 0);
     let t2 = make_t2_full(
-        "12345678Z", "12345678Z", "NOMBRE", 100, 0,
-        '1', 'C', '1', "CH", '0', "            ", 'I',
-        "20240101", 'A', "00000000", ' ', "000000000000", ' ', "00000",
+        "12345678Z",
+        "12345678Z",
+        "NOMBRE",
+        100,
+        0,
+        '1',
+        'C',
+        '1',
+        "CH",
+        '0',
+        "            ",
+        'I',
+        "20240101",
+        'A',
+        "00000000",
+        ' ',
+        "000000000000",
+        ' ',
+        "00000",
     );
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
@@ -592,7 +796,11 @@ fn test_zero_t2_records() {
     let t1 = make_t1("12345678Z", "NOMBRE", 0, 0, 0);
     let bytes = build_file(&[t1]);
     let result = validate(&bytes);
-    assert!(result.is_valid, "T1-only file with 0 T2 should be valid, errors: {:?}", result.errors);
+    assert!(
+        result.is_valid,
+        "T1-only file with 0 T2 should be valid, errors: {:?}",
+        result.errors
+    );
     let s = result.summary.unwrap();
     assert_eq!(s.total_registros_t2_real, 0);
     assert_eq!(s.total_registros_t2_declarado, 0);
@@ -604,7 +812,11 @@ fn test_negative_values() {
     let t2 = make_t2_cuenta("12345678Z", "12345678Z", "NOMBRE", -500, -300);
     let bytes = build_file(&[t1, t2]);
     let result = validate(&bytes);
-    assert!(result.is_valid, "Negative values should be valid, errors: {:?}", result.errors);
+    assert!(
+        result.is_valid,
+        "Negative values should be valid, errors: {:?}",
+        result.errors
+    );
     let s = result.summary.unwrap();
     assert!((s.suma_val1 - (-5.0)).abs() < 0.01);
     assert!((s.suma_val2 - (-3.0)).abs() < 0.01);
@@ -617,5 +829,9 @@ fn test_lf_line_endings() {
     let text = format!("{}\n", t1);
     let (bytes, _, _) = encoding_rs::WINDOWS_1252.encode(&text);
     let result = validate(&bytes.to_vec());
-    assert!(result.is_valid, "LF-only line endings should work, errors: {:?}", result.errors);
+    assert!(
+        result.is_valid,
+        "LF-only line endings should work, errors: {:?}",
+        result.errors
+    );
 }

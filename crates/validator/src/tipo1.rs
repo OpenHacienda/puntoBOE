@@ -1,6 +1,6 @@
+use crate::ValidationError;
 use crate::nif;
 use crate::parser::*;
-use crate::ValidationError;
 
 pub fn validate_tipo1(record: &Record, errors: &mut Vec<ValidationError>) {
     let raw = &record.raw;
@@ -10,7 +10,10 @@ pub fn validate_tipo1(record: &Record, errors: &mut Vec<ValidationError>) {
     let tipo_soporte = char_at(raw, 58);
     if tipo_soporte != 'T' {
         errors.push(ValidationError::error_pos(
-            "E101", line, (58, 58), "TIPO_SOPORTE",
+            "E101",
+            line,
+            (58, 58),
+            "TIPO_SOPORTE",
             &format!("TIPO_SOPORTE debe ser 'T', encontrado '{}'", tipo_soporte),
         ));
     }
@@ -19,7 +22,10 @@ pub fn validate_tipo1(record: &Record, errors: &mut Vec<ValidationError>) {
     let nif_declarante = field(raw, 9, 17);
     if !nif::validate_nif(&nif_declarante) {
         errors.push(ValidationError::error_pos(
-            "E102", line, (9, 17), "NIF_DECLARANTE",
+            "E102",
+            line,
+            (9, 17),
+            "NIF_DECLARANTE",
             &format!("NIF_DECLARANTE inválido: '{}'", nif_declarante.trim()),
         ));
     }
@@ -28,7 +34,10 @@ pub fn validate_tipo1(record: &Record, errors: &mut Vec<ValidationError>) {
     let nombre = field(raw, 18, 57);
     if nombre.trim().is_empty() {
         errors.push(ValidationError::error_pos(
-            "E103", line, (18, 57), "APELLIDOS_NOMBRE",
+            "E103",
+            line,
+            (18, 57),
+            "APELLIDOS_NOMBRE",
             "APELLIDOS_NOMBRE vacío",
         ));
     }
@@ -37,8 +46,14 @@ pub fn validate_tipo1(record: &Record, errors: &mut Vec<ValidationError>) {
     let num_ident = field(raw, 108, 120);
     if !num_ident.starts_with("720") {
         errors.push(ValidationError::error_pos(
-            "E104", line, (108, 120), "NUM_IDENTIFICATIVO",
-            &format!("NUM_IDENTIFICATIVO no empieza por '720': '{}'", num_ident.trim()),
+            "E104",
+            line,
+            (108, 120),
+            "NUM_IDENTIFICATIVO",
+            &format!(
+                "NUM_IDENTIFICATIVO no empieza por '720': '{}'",
+                num_ident.trim()
+            ),
         ));
     }
 
@@ -47,7 +62,10 @@ pub fn validate_tipo1(record: &Record, errors: &mut Vec<ValidationError>) {
     let dec_sust = char_at(raw, 122);
     if dec_comp == 'C' && dec_sust == 'S' {
         errors.push(ValidationError::error_pos(
-            "E105", line, (121, 122), "DEC_COMPLEMENTARIA/DEC_SUSTITUTIVA",
+            "E105",
+            line,
+            (121, 122),
+            "DEC_COMPLEMENTARIA/DEC_SUSTITUTIVA",
             "DEC_COMPLEMENTARIA y DEC_SUSTITUTIVA ambas informadas",
         ));
     }
@@ -56,7 +74,10 @@ pub fn validate_tipo1(record: &Record, errors: &mut Vec<ValidationError>) {
     let num_dec_anterior = field(raw, 123, 135);
     if dec_sust == 'S' && is_zeros(&num_dec_anterior) {
         errors.push(ValidationError::error_pos(
-            "E106", line, (123, 135), "NUM_DEC_ANTERIOR",
+            "E106",
+            line,
+            (123, 135),
+            "NUM_DEC_ANTERIOR",
             "DEC_SUSTITUTIVA='S' pero NUM_DEC_ANTERIOR es ceros",
         ));
     }
@@ -65,7 +86,10 @@ pub fn validate_tipo1(record: &Record, errors: &mut Vec<ValidationError>) {
     let blancos = field(raw, 181, 500);
     if !is_blank(&blancos) {
         errors.push(ValidationError::error_pos(
-            "E110", line, (181, 500), "BLANCOS",
+            "E110",
+            line,
+            (181, 500),
+            "BLANCOS",
             "Posiciones 181-500 contienen caracteres no blancos",
         ));
     }

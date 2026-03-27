@@ -1,8 +1,8 @@
+mod cross;
 mod nif;
 mod parser;
 mod tipo1;
 mod tipo2;
-mod cross;
 
 pub use parser::Record;
 
@@ -86,9 +86,17 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     let (text, encoding_used, had_errors) = encoding_rs::WINDOWS_1252.decode(bytes);
     if had_errors {
         errors.push(ValidationError::fatal(
-            "E001", 0, "FICHERO", "Codificación no es ISO-8859-1",
+            "E001",
+            0,
+            "FICHERO",
+            "Codificación no es ISO-8859-1",
         ));
-        return ValidationResult { is_valid: false, errors, warnings, summary: None };
+        return ValidationResult {
+            is_valid: false,
+            errors,
+            warnings,
+            summary: None,
+        };
     }
     let _ = encoding_used;
 
@@ -100,16 +108,25 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     };
 
     // Remove trailing empty line from final CRLF
-    let lines: Vec<&str> = raw_lines.iter()
+    let lines: Vec<&str> = raw_lines
+        .iter()
         .copied()
         .filter(|l| !l.is_empty())
         .collect();
 
     if lines.is_empty() {
         errors.push(ValidationError::fatal(
-            "E003", 0, "FICHERO", "Fichero vacío: no se encontró registro tipo 1",
+            "E003",
+            0,
+            "FICHERO",
+            "Fichero vacío: no se encontró registro tipo 1",
         ));
-        return ValidationResult { is_valid: false, errors, warnings, summary: None };
+        return ValidationResult {
+            is_valid: false,
+            errors,
+            warnings,
+            summary: None,
+        };
     }
 
     // Validate line lengths (E002)
@@ -117,7 +134,9 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
         let len = line.chars().count();
         if len != 500 {
             errors.push(ValidationError::fatal(
-                "E002", i + 1, "REGISTRO",
+                "E002",
+                i + 1,
+                "REGISTRO",
                 &format!("Longitud de línea incorrecta: {} (esperado 500)", len),
             ));
         }
@@ -125,11 +144,17 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
 
     // If any line has wrong length, we can't safely parse positions
     if errors.iter().any(|e| e.code == "E002") {
-        return ValidationResult { is_valid: false, errors, warnings, summary: None };
+        return ValidationResult {
+            is_valid: false,
+            errors,
+            warnings,
+            summary: None,
+        };
     }
 
     // Parse records
-    let records: Vec<parser::Record> = lines.iter()
+    let records: Vec<parser::Record> = lines
+        .iter()
         .enumerate()
         .map(|(i, line)| parser::parse_record(line, i + 1))
         .collect();
@@ -137,16 +162,26 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     // E003: first record must be type 1
     if records[0].tipo != '1' {
         errors.push(ValidationError::fatal(
-            "E003", 1, "TIPO_REGISTRO", "Primer registro no es tipo 1",
+            "E003",
+            1,
+            "TIPO_REGISTRO",
+            "Primer registro no es tipo 1",
         ));
-        return ValidationResult { is_valid: false, errors, warnings, summary: None };
+        return ValidationResult {
+            is_valid: false,
+            errors,
+            warnings,
+            summary: None,
+        };
     }
 
     // E004: only one type 1 record
     let t1_count = records.iter().filter(|r| r.tipo == '1').count();
     if t1_count > 1 {
         errors.push(ValidationError::fatal(
-            "E004", 1, "TIPO_REGISTRO",
+            "E004",
+            1,
+            "TIPO_REGISTRO",
             &format!("Más de un registro tipo 1 ({} encontrados)", t1_count),
         ));
     }
@@ -155,7 +190,9 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     for r in &records {
         if r.tipo != '1' && r.tipo != '2' {
             errors.push(ValidationError::fatal(
-                "E005", r.line, "TIPO_REGISTRO",
+                "E005",
+                r.line,
+                "TIPO_REGISTRO",
                 &format!("Tipo de registro desconocido: '{}'", r.tipo),
             ));
         }
@@ -165,7 +202,9 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     for r in &records {
         if r.modelo != "720" {
             errors.push(ValidationError::fatal(
-                "E006", r.line, "MODELO",
+                "E006",
+                r.line,
+                "MODELO",
                 &format!("MODELO no es '720': '{}'", r.modelo),
             ));
         }
@@ -175,14 +214,21 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     for r in &records {
         if !r.ejercicio.chars().all(|c| c.is_ascii_digit()) || r.ejercicio.len() != 4 {
             errors.push(ValidationError::fatal(
-                "E007", r.line, "EJERCICIO",
-                &format!("EJERCICIO no numérico o longitud incorrecta: '{}'", r.ejercicio),
+                "E007",
+                r.line,
+                "EJERCICIO",
+                &format!(
+                    "EJERCICIO no numérico o longitud incorrecta: '{}'",
+                    r.ejercicio
+                ),
             ));
         } else {
             let year: u32 = r.ejercicio.parse().unwrap_or(0);
             if year < 1900 || year > 2100 {
                 errors.push(ValidationError::fatal(
-                    "E007", r.line, "EJERCICIO",
+                    "E007",
+                    r.line,
+                    "EJERCICIO",
                     &format!("EJERCICIO fuera de rango: {}", year),
                 ));
             }
@@ -190,7 +236,12 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     }
 
     if errors.iter().any(|e| e.severity == Severity::Fatal) {
-        return ValidationResult { is_valid: false, errors, warnings, summary: None };
+        return ValidationResult {
+            is_valid: false,
+            errors,
+            warnings,
+            summary: None,
+        };
     }
 
     // Validate tipo 1
