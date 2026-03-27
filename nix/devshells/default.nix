@@ -6,6 +6,7 @@ pkgs.mkShell {
     binaryen
     wasm-bindgen-cli
     llvmPackages.lld
+    nodePackages.tailwindcss
   ];
 
   shellHook = ''
