@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 leptos = { version = "0.7", features = ["csr"] }
+leptos_meta = "0.7"
 leptos-fluent = "0.3"
 validator720 = { path = "../validator" }
 wasm-bindgen = "0.2"
