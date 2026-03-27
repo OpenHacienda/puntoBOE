@@ -5,6 +5,7 @@ pkgs.mkShell {
     trunk
     binaryen
     wasm-bindgen-cli
+    llvmPackages.lld
   ];
 
   shellHook = ''

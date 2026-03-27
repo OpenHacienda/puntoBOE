@@ -1,8 +1,16 @@
 use leptos::prelude::*;
 use leptos::*;
-use validator720::{Severity, ValidationError, ValidationResult, validate};
+use validator720::{Severity, T2Detail, ValidationError, ValidationResult, validate};
 use wasm_bindgen::prelude::*;
 use web_sys::{DragEvent, Event, HtmlInputElement};
+
+#[wasm_bindgen(inline_js = "
+const EUR_FMT = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+export function format_eur(v) { return EUR_FMT.format(v); }
+")]
+extern "C" {
+    fn format_eur(v: f64) -> String;
+}
 
 fn main() {
     mount_to_body(App);
@@ -38,7 +46,7 @@ fn App() -> impl IntoView {
                 <div class="flex-1 gap-2">
                     <div class="btn btn-ghost text-xl font-bold tracking-tight">
                         <span class="badge badge-primary badge-sm font-mono">"720"</span>
-                        "Validador Modelo 720"
+                        "puntoBOE"
                     </div>
                 </div>
                 <div class="flex-none">
@@ -50,30 +58,7 @@ fn App() -> impl IntoView {
             </div>
 
             // Hero / Drop Zone
-            <DropZone on_file=on_file.clone() />
-
-            // File name
-            <Show when=move || !get_file_name.get().is_empty()>
-                <div class="flex justify-center mt-3">
-                    <div class="badge badge-outline badge-lg gap-2 font-mono text-sm">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                        </svg>
-                        {move || get_file_name.get()}
-                    </div>
-                </div>
-            </Show>
+            <DropZone on_file=on_file.clone() file_name=get_file_name.into() />
 
             // Loading
             <Show when=move || get_loading.get()>
@@ -100,6 +85,10 @@ fn App() -> impl IntoView {
                                 .summary
                                 .as_ref()
                                 .map(|s| view! { <SummaryPanel summary=s.clone() /> })}
+                            {r
+                                .summary
+                                .as_ref()
+                                .map(|s| view! { <RecordsTable records=s.records.clone() /> })}
                             <ErrorList errors=r.errors.clone() />
                             <WarningList warnings=r.warnings.clone() />
                         </div>
@@ -116,7 +105,10 @@ fn App() -> impl IntoView {
 }
 
 #[component]
-fn DropZone(on_file: impl Fn(String, Vec<u8>) + Clone + 'static) -> impl IntoView {
+fn DropZone(
+    on_file: impl Fn(String, Vec<u8>) + Clone + 'static,
+    file_name: Signal<String>,
+) -> impl IntoView {
     let on_file_drop = on_file.clone();
     let on_file_input = on_file;
 
@@ -148,38 +140,29 @@ fn DropZone(on_file: impl Fn(String, Vec<u8>) + Clone + 'static) -> impl IntoVie
         }
     };
 
+    // Single wrapper owns the event handlers; Show/fallback switches visuals.
     view! {
         <div
-            class="relative card bg-base-100 shadow-xl border-2 border-dashed border-base-300 hover:border-primary transition-all duration-300 cursor-pointer group"
+            class=move || {
+                if file_name.get().is_empty() {
+                    "relative card bg-base-100 shadow-xl border-2 border-dashed border-base-300 \
+                     hover:border-primary transition-all duration-300 cursor-pointer group"
+                } else {
+                    "relative flex items-center gap-3 px-4 py-2 rounded-box bg-base-100 shadow \
+                     border border-base-300 hover:border-primary transition-colors cursor-pointer group"
+                }
+            }
             on:drop=on_drop
             on:dragover=|ev: DragEvent| ev.prevent_default()
         >
-            <div class="card-body items-center text-center py-12">
-                <div class="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 group-hover:-translate-y-1 transition-transform duration-300">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-8 w-8 text-primary"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                        />
-                    </svg>
-                </div>
-                <h2 class="card-title text-lg">"Arrastra tu fichero .720 aqui"</h2>
-                <p class="text-base-content/50 text-sm">
-                    "o pulsa para seleccionar desde tu equipo"
-                </p>
-                <div class="card-actions mt-4">
-                    <div class="btn btn-primary btn-sm gap-2 pointer-events-none">
+            <Show
+                when=move || file_name.get().is_empty()
+                fallback=move || {
+                    view! {
+                        // ── Compact bar ───────────────────────────────────
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            class="h-4 w-4"
+                            class="h-4 w-4 shrink-0 text-base-content/40"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -188,13 +171,75 @@ fn DropZone(on_file: impl Fn(String, Vec<u8>) + Clone + 'static) -> impl IntoVie
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                             />
                         </svg>
-                        "Seleccionar fichero"
+                        <span class="font-mono text-sm truncate flex-1">
+                            {move || file_name.get()}
+                        </span>
+                        <span class="btn btn-xs btn-outline gap-1 pointer-events-none shrink-0">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-3 w-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                                />
+                            </svg>
+                            "Cambiar"
+                        </span>
+                    }
+                }
+            >
+                // ── Full drop zone ────────────────────────────────────────
+                <div class="card-body items-center text-center py-12">
+                    <div class="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-2 group-hover:-translate-y-1 transition-transform duration-300">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-8 w-8 text-primary"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                            />
+                        </svg>
+                    </div>
+                    <h2 class="card-title text-lg">"Arrastra tu fichero .720 aqui"</h2>
+                    <p class="text-base-content/50 text-sm">
+                        "o pulsa para seleccionar desde tu equipo"
+                    </p>
+                    <div class="card-actions mt-4">
+                        <div class="btn btn-primary btn-sm gap-2 pointer-events-none">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                                />
+                            </svg>
+                            "Seleccionar fichero"
+                        </div>
                     </div>
                 </div>
-            </div>
+            </Show>
             <input
                 type="file"
                 accept=".720,.txt"
@@ -210,11 +255,13 @@ fn read_file(file: web_sys::File, callback: impl FnOnce(Vec<u8>) + 'static) {
     use gloo_file::callbacks::read_as_bytes;
 
     let gloo_file = GlooFile::from(file);
-    read_as_bytes(&gloo_file, move |result| {
+    // ReaderTask must be kept alive until the callback fires; dropping it aborts the read.
+    let task = read_as_bytes(&gloo_file, move |result| {
         if let Ok(bytes) = result {
             callback(bytes);
         }
     });
+    std::mem::forget(task);
 }
 
 #[component]
@@ -348,20 +395,233 @@ fn SummaryPanel(summary: validator720::FileSummary) -> impl IntoView {
 }
 
 fn format_currency(val: f64) -> String {
-    let abs = val.abs();
-    let integer = abs as u64;
-    let cents = ((abs - integer as f64) * 100.0).round() as u64;
-    let int_str = integer.to_string();
-    let mut formatted = String::new();
-    for (i, ch) in int_str.chars().rev().enumerate() {
-        if i > 0 && i % 3 == 0 {
-            formatted.push('.');
-        }
-        formatted.push(ch);
+    format_eur(val)
+}
+
+// ── RecordsTable helpers ──────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SortCol {
+    Line,
+    Bien,
+    Pais,
+    Fecha,
+    Origen,
+    Val1,
+    Val2,
+}
+
+fn clave_label(c: char) -> (&'static str, &'static str, &'static str) {
+    match c {
+        'C' => ("C", "Cuenta bancaria", "badge-info"),
+        'V' => ("V", "Valores mobiliarios", "badge-secondary"),
+        'I' => ("I", "Inst. colectiva inversión", "badge-accent"),
+        'S' => ("S", "Seguro / renta", "badge-warning"),
+        'B' => ("B", "Bien inmueble", "badge-success"),
+        _ => ("?", "Desconocido", "badge-ghost"),
     }
-    let formatted: String = formatted.chars().rev().collect();
-    let sign = if val < 0.0 { "-" } else { "" };
-    format!("{}{},{:02} EUR", sign, formatted, cents)
+}
+
+fn origen_label(c: char) -> (&'static str, &'static str) {
+    match c {
+        'A' => ("A", "Alta"),
+        'M' => ("M", "Modificación"),
+        'C' => ("C", "Cancelación"),
+        _ => ("?", "Desconocido"),
+    }
+}
+
+fn format_fecha(s: &str) -> String {
+    if s.len() == 8 && s != "00000000" {
+        format!("{}-{}-{}", &s[0..4], &s[4..6], &s[6..8])
+    } else {
+        "—".to_string()
+    }
+}
+
+// ── RecordsTable component ────────────────────────────────────────────────────
+
+#[component]
+fn RecordsTable(records: Vec<T2Detail>) -> impl IntoView {
+    if records.is_empty() {
+        return view! { <div></div> }.into_any();
+    }
+
+    let count_str = format!("{}", records.len());
+    let sort_col = RwSignal::new(SortCol::Line);
+    let sort_asc = RwSignal::new(true);
+    let stored = StoredValue::new(records);
+
+    // Sorted snapshot, recomputed whenever sort state changes.
+    let sorted = Memo::new(move |_| {
+        let mut v = stored.get_value();
+        let col = sort_col.get();
+        let asc = sort_asc.get();
+        v.sort_by(|a, b| {
+            let ord = match col {
+                SortCol::Line => a.line.cmp(&b.line),
+                SortCol::Bien => a
+                    .clave_bien
+                    .cmp(&b.clave_bien)
+                    .then(a.subclave.cmp(&b.subclave)),
+                SortCol::Pais => a.codigo_pais.cmp(&b.codigo_pais),
+                SortCol::Fecha => a.fecha_incorporacion.cmp(&b.fecha_incorporacion),
+                SortCol::Origen => a.origen.cmp(&b.origen),
+                SortCol::Val1 => a
+                    .valoracion1
+                    .partial_cmp(&b.valoracion1)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+                SortCol::Val2 => a
+                    .valoracion2
+                    .partial_cmp(&b.valoracion2)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            };
+            if asc { ord } else { ord.reverse() }
+        });
+        v
+    });
+
+    // Click handler for a column header.
+    let toggle = move |col: SortCol| {
+        move |_| {
+            if sort_col.get_untracked() == col {
+                sort_asc.update(|a| *a = !*a);
+            } else {
+                sort_col.set(col);
+                sort_asc.set(true);
+            }
+        }
+    };
+
+    // Reactive class for a header <th>.
+    let th_cls = move |col: SortCol, extra: &'static str| {
+        move || {
+            format!(
+                "cursor-pointer select-none whitespace-nowrap {} {}",
+                if sort_col.get() == col {
+                    "text-primary"
+                } else {
+                    "opacity-60 hover:opacity-100"
+                },
+                extra
+            )
+        }
+    };
+
+    // Reactive sort indicator.
+    let icon = move |col: SortCol| {
+        move || {
+            if sort_col.get() != col {
+                " ↕"
+            } else if sort_asc.get() {
+                " ↑"
+            } else {
+                " ↓"
+            }
+        }
+    };
+
+    view! {
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body p-0">
+                <div class="flex items-center gap-3 px-6 pt-5 pb-3">
+                    <h3 class="font-semibold">"Registros declarados"</h3>
+                    <span class="badge badge-ghost badge-sm">{count_str}</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr class="text-xs uppercase tracking-wider">
+                                <th
+                                    class=th_cls(SortCol::Line, "")
+                                    on:click=toggle(SortCol::Line)
+                                >
+                                    "#" {icon(SortCol::Line)}
+                                </th>
+                                <th
+                                    class=th_cls(SortCol::Bien, "")
+                                    on:click=toggle(SortCol::Bien)
+                                >
+                                    "Bien" {icon(SortCol::Bien)}
+                                </th>
+                                <th
+                                    class=th_cls(SortCol::Pais, "")
+                                    on:click=toggle(SortCol::Pais)
+                                >
+                                    "País" {icon(SortCol::Pais)}
+                                </th>
+                                <th
+                                    class=th_cls(SortCol::Fecha, "")
+                                    on:click=toggle(SortCol::Fecha)
+                                >
+                                    "F. incorporación" {icon(SortCol::Fecha)}
+                                </th>
+                                <th
+                                    class=th_cls(SortCol::Origen, "")
+                                    on:click=toggle(SortCol::Origen)
+                                >
+                                    "Origen" {icon(SortCol::Origen)}
+                                </th>
+                                <th
+                                    class=th_cls(SortCol::Val1, "text-right")
+                                    on:click=toggle(SortCol::Val1)
+                                >
+                                    "Valoración 1" {icon(SortCol::Val1)}
+                                </th>
+                                <th
+                                    class=th_cls(SortCol::Val2, "text-right")
+                                    on:click=toggle(SortCol::Val2)
+                                >
+                                    "Valoración 2" {icon(SortCol::Val2)}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {move || {
+                                sorted
+                                    .get()
+                                    .into_iter()
+                                    .map(|r| {
+                                        let (clave_code, clave_tip, clave_class) = clave_label(
+                                            r.clave_bien,
+                                        );
+                                        let (origen_code, origen_tip) = origen_label(r.origen);
+                                        let badge_class = format!(
+                                            "badge badge-sm font-mono {}",
+                                            clave_class,
+                                        );
+                                        let val1 = format_currency(r.valoracion1);
+                                        let val2 = format_currency(r.valoracion2);
+                                        let fecha = format_fecha(&r.fecha_incorporacion);
+                                        view! {
+                                            <tr class="hover:bg-base-200 transition-colors">
+                                                <td class="font-mono text-xs text-base-content/40">
+                                                    {r.line}
+                                                </td>
+                                                <td>
+                                                    <span class=badge_class title=clave_tip>
+                                                        {format!("{}{}", clave_code, r.subclave)}
+                                                    </span>
+                                                </td>
+                                                <td class="font-mono text-xs">{r.codigo_pais}</td>
+                                                <td class="font-mono text-xs">{fecha}</td>
+                                                <td class="font-mono text-xs" title=origen_tip>
+                                                    {origen_code}
+                                                </td>
+                                                <td class="font-mono text-xs text-right">{val1}</td>
+                                                <td class="font-mono text-xs text-right">{val2}</td>
+                                            </tr>
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()
+                            }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    .into_any()
 }
 
 #[component]

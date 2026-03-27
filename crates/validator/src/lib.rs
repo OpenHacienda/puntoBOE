@@ -23,6 +23,24 @@ pub struct FileSummary {
     pub total_registros_t2_real: usize,
     pub suma_val1: f64,
     pub suma_val2: f64,
+    pub records: Vec<T2Detail>,
+}
+
+/// Key fields extracted from a single Tipo-2 record, for display purposes.
+#[derive(Debug, Clone, PartialEq)]
+pub struct T2Detail {
+    pub line: usize,
+    pub nif_declarado: String,
+    pub nombre_declarado: String,
+    /// C / V / I / S / B
+    pub clave_bien: char,
+    pub subclave: char,
+    pub codigo_pais: String,
+    pub fecha_incorporacion: String,
+    /// A / M / C
+    pub origen: char,
+    pub valoracion1: f64,
+    pub valoracion2: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -262,6 +280,31 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
     let suma_val1_t1 = parse_signed_amount(&t1.raw[144..145], &t1.raw[145..162]);
     let suma_val2_t1 = parse_signed_amount(&t1.raw[162..163], &t1.raw[163..180]);
 
+    let records: Vec<T2Detail> = t2_records
+        .iter()
+        .map(|r| {
+            let raw = &r.raw;
+            T2Detail {
+                line: r.line,
+                nif_declarado: parser::field(raw, 18, 26).trim().to_string(),
+                nombre_declarado: parser::field(raw, 36, 75).trim().to_string(),
+                clave_bien: parser::char_at(raw, 102),
+                subclave: parser::char_at(raw, 103),
+                codigo_pais: parser::field(raw, 129, 130),
+                fecha_incorporacion: parser::field(raw, 415, 422),
+                origen: parser::char_at(raw, 423),
+                valoracion1: parse_signed_amount(
+                    &parser::field(raw, 432, 432),
+                    &parser::field(raw, 433, 446),
+                ),
+                valoracion2: parse_signed_amount(
+                    &parser::field(raw, 447, 447),
+                    &parser::field(raw, 448, 461),
+                ),
+            }
+        })
+        .collect();
+
     let summary = FileSummary {
         ejercicio: t1.ejercicio.clone(),
         nif_declarante: t1.raw[8..17].trim().to_string(),
@@ -270,6 +313,7 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
         total_registros_t2_real: t2_records.len(),
         suma_val1: suma_val1_t1,
         suma_val2: suma_val2_t1,
+        records,
     };
 
     let is_valid = errors.is_empty();
