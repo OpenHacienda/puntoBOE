@@ -1,0 +1,53 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one deployment at a time; do not cancel in-progress runs so
+# a deploy is never left in a half-finished state.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v17
+
+      # Caches all Nix store paths produced by this workflow in GitHub's
+      # Actions cache, so subsequent runs skip rebuilding unchanged derivations.
+      - uses: DeterminateSystems/magic-nix-cache-action@v9
+
+      - name: Build
+        run: |
+          nix build \
+            --option extra-substituters "https://fenix.cachix.org" \
+            --option extra-trusted-public-keys \
+              "fenix.cachix.org-1:erQkK6aeUBwlDZbq9/GT2fslDvHYk/esNBX78CcM8Yo=" \
+            .#default
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: result/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

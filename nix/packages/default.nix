@@ -7,6 +7,14 @@ let
     inputs.fenix.packages.${pkgs.system}.stable.rustc
     inputs.fenix.packages.${pkgs.system}.targets.wasm32-unknown-unknown.stable.rust-std
   ];
+
+  # Vendor all crates.io dependencies for an offline Cargo build.
+  # cargoSetupHook is intentionally NOT used — it concatenates $sourceRoot
+  # with the absolute store path, producing an invalid path. We configure
+  # CARGO_HOME manually in buildPhase instead.
+  cargoVendorDir = pkgs.rustPlatform.importCargoLock {
+    lockFile = ../../Cargo.lock;
+  };
 in
 pkgs.stdenv.mkDerivation {
   pname = "puntoboe";
@@ -16,7 +24,6 @@ pkgs.stdenv.mkDerivation {
 
   nativeBuildInputs = [
     toolchain
-    pkgs.rustPlatform.cargoSetupHook # sets up vendored Cargo deps in $CARGO_HOME
     pkgs.trunk
     pkgs.nodePackages.tailwindcss
     pkgs.wasm-bindgen-cli
@@ -24,13 +31,18 @@ pkgs.stdenv.mkDerivation {
     pkgs.git # trunk uses git for project-root detection
   ];
 
-  # Vendor all crates.io dependencies for an offline Cargo build.
-  cargoVendorDir = pkgs.rustPlatform.importCargoLock {
-    lockFile = ../../Cargo.lock;
-  };
-
   buildPhase = ''
     runHook preBuild
+
+    # Wire cargo to the vendored dependency tree.
+    export CARGO_HOME=$(mktemp -d)
+    cat > "$CARGO_HOME/config.toml" <<EOF
+    [source.crates-io]
+    replace-with = "vendored-sources"
+
+    [source.vendored-sources]
+    directory = "${cargoVendorDir}"
+    EOF
 
     # Point trunk at the Nix-provided binaries so it never tries to download.
     # wasm-bindgen version (0.2.114) matches the crate in Cargo.lock exactly.
