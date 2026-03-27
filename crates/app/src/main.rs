@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use leptos::*;
+use leptos_fluent::{leptos_fluent, move_tr, tr};
 use validator720::{Severity, T2Detail, ValidationError, ValidationResult, validate};
 use wasm_bindgen::prelude::*;
 use web_sys::{DragEvent, Event, HtmlInputElement};
@@ -16,8 +17,32 @@ fn main() {
     mount_to_body(App);
 }
 
+// ── I18n provider ─────────────────────────────────────────────────────────────
+
+#[component]
+fn I18nProvider(children: Children) -> impl IntoView {
+    leptos_fluent! {
+        children: children(),
+        locales: "./locales",
+        default_language: "es",
+        #[cfg(debug_assertions)]
+        check_translations: "./src/**/*.rs",
+    }
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+
 #[component]
 fn App() -> impl IntoView {
+    view! {
+        <I18nProvider>
+            <Main />
+        </I18nProvider>
+    }
+}
+
+#[component]
+fn Main() -> impl IntoView {
     let file_name = signal(String::new());
     let result = signal(None::<ValidationResult>);
     let loading = signal(false);
@@ -52,26 +77,24 @@ fn App() -> impl IntoView {
                 <div class="flex-none">
                     <div class="badge badge-ghost gap-1.5 py-3">
                         <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-                        "100% local"
+                        {move_tr!("nav-local")}
                     </div>
                 </div>
             </div>
 
-            // Hero / Drop Zone
+            // Drop Zone
             <DropZone on_file=on_file.clone() file_name=get_file_name.into() />
 
             // Loading
             <Show when=move || get_loading.get()>
                 <div class="flex justify-center items-center gap-3 my-8">
                     <span class="loading loading-spinner loading-md text-primary"></span>
-                    <span class="text-base-content/60">"Validando fichero..."</span>
+                    <span class="text-base-content/60">{move_tr!("loading")}</span>
                 </div>
             </Show>
 
             // Results
-            <Show when=move || {
-                get_result.get().is_some()
-            }>
+            <Show when=move || get_result.get().is_some()>
                 {move || {
                     let r = get_result.get().unwrap();
                     view! {
@@ -81,14 +104,8 @@ fn App() -> impl IntoView {
                                 error_count=r.errors.len()
                                 warning_count=r.warnings.len()
                             />
-                            {r
-                                .summary
-                                .as_ref()
-                                .map(|s| view! { <SummaryPanel summary=s.clone() /> })}
-                            {r
-                                .summary
-                                .as_ref()
-                                .map(|s| view! { <RecordsTable records=s.records.clone() /> })}
+                            {r.summary.as_ref().map(|s| view! { <SummaryPanel summary=s.clone() /> })}
+                            {r.summary.as_ref().map(|s| view! { <RecordsTable records=s.records.clone() /> })}
                             <ErrorList errors=r.errors.clone() />
                             <WarningList warnings=r.warnings.clone() />
                         </div>
@@ -98,11 +115,13 @@ fn App() -> impl IntoView {
 
             // Footer
             <footer class="mt-12 text-center text-base-content/40 text-xs">
-                "Basado en Orden HAP/72/2013 — Tu fichero nunca sale de este navegador"
+                {move_tr!("footer")}
             </footer>
         </div>
     }
 }
+
+// ── DropZone ──────────────────────────────────────────────────────────────────
 
 #[component]
 fn DropZone(
@@ -140,7 +159,6 @@ fn DropZone(
         }
     };
 
-    // Single wrapper owns the event handlers; Show/fallback switches visuals.
     view! {
         <div
             class=move || {
@@ -192,7 +210,7 @@ fn DropZone(
                                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
                                 />
                             </svg>
-                            "Cambiar"
+                            {move_tr!("dropzone-change")}
                         </span>
                     }
                 }
@@ -215,10 +233,8 @@ fn DropZone(
                             />
                         </svg>
                     </div>
-                    <h2 class="card-title text-lg">"Arrastra tu fichero .720 aqui"</h2>
-                    <p class="text-base-content/50 text-sm">
-                        "o pulsa para seleccionar desde tu equipo"
-                    </p>
+                    <h2 class="card-title text-lg">{move_tr!("dropzone-title")}</h2>
+                    <p class="text-base-content/50 text-sm">{move_tr!("dropzone-subtitle")}</p>
                     <div class="card-actions mt-4">
                         <div class="btn btn-primary btn-sm gap-2 pointer-events-none">
                             <svg
@@ -235,7 +251,7 @@ fn DropZone(
                                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
                                 />
                             </svg>
-                            "Seleccionar fichero"
+                            {move_tr!("dropzone-button")}
                         </div>
                     </div>
                 </div>
@@ -251,8 +267,8 @@ fn DropZone(
 }
 
 fn read_file(file: web_sys::File, callback: impl FnOnce(Vec<u8>) + 'static) {
-    use gloo_file::File as GlooFile;
     use gloo_file::callbacks::read_as_bytes;
+    use gloo_file::File as GlooFile;
 
     let gloo_file = GlooFile::from(file);
     // ReaderTask must be kept alive until the callback fires; dropping it aborts the read.
@@ -264,9 +280,16 @@ fn read_file(file: web_sys::File, callback: impl FnOnce(Vec<u8>) + 'static) {
     std::mem::forget(task);
 }
 
+// ── StatusBadge ───────────────────────────────────────────────────────────────
+
 #[component]
 fn StatusBadge(is_valid: bool, error_count: usize, warning_count: usize) -> impl IntoView {
     if is_valid {
+        let detail = if warning_count > 0 {
+            tr!("status-valid-warnings", { "count" => warning_count as i64 })
+        } else {
+            tr!("status-valid-clean")
+        };
         view! {
             <div class="alert alert-success shadow-lg">
                 <svg
@@ -284,20 +307,14 @@ fn StatusBadge(is_valid: bool, error_count: usize, warning_count: usize) -> impl
                     />
                 </svg>
                 <div>
-                    <h3 class="font-bold">"Fichero valido"</h3>
-                    <div class="text-xs opacity-80">
-                        {if warning_count > 0 {
-                            format!("Sin errores — {} avisos", warning_count)
-                        } else {
-                            "Sin errores ni avisos".to_string()
-                        }}
-                    </div>
+                    <h3 class="font-bold">{move_tr!("status-valid-title")}</h3>
+                    <div class="text-xs opacity-80">{detail}</div>
                 </div>
             </div>
         }
         .into_any()
     } else {
-        let detail = format!("{} errores encontrados", error_count);
+        let detail = tr!("status-invalid-detail", { "count" => error_count as i64 });
         view! {
             <div class="alert alert-error shadow-lg">
                 <svg
@@ -315,7 +332,7 @@ fn StatusBadge(is_valid: bool, error_count: usize, warning_count: usize) -> impl
                     />
                 </svg>
                 <div>
-                    <h3 class="font-bold">"Fichero invalido"</h3>
+                    <h3 class="font-bold">{move_tr!("status-invalid-title")}</h3>
                     <div class="text-xs opacity-80">{detail}</div>
                 </div>
             </div>
@@ -323,6 +340,8 @@ fn StatusBadge(is_valid: bool, error_count: usize, warning_count: usize) -> impl
         .into_any()
     }
 }
+
+// ── SummaryPanel ──────────────────────────────────────────────────────────────
 
 #[component]
 fn SummaryPanel(summary: validator720::FileSummary) -> impl IntoView {
@@ -334,58 +353,47 @@ fn SummaryPanel(summary: validator720::FileSummary) -> impl IntoView {
     let val1 = format_currency(summary.suma_val1);
     let val2 = format_currency(summary.suma_val2);
     let t2_match = summary.total_registros_t2_declarado == summary.total_registros_t2_real;
-    let t2_badge_class = if t2_match {
-        "badge badge-success badge-sm"
-    } else {
-        "badge badge-error badge-sm"
-    };
+    let t2_badge_class = if t2_match { "badge badge-success badge-sm" } else { "badge badge-error badge-sm" };
 
     view! {
         <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
                 <h2 class="card-title text-sm uppercase tracking-wider text-base-content/50 font-semibold mb-4">
-                    "Resumen de la declaracion"
+                    {move_tr!("summary-title")}
                 </h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    // Ejercicio
                     <div class="stat bg-base-200 rounded-box p-4">
-                        <div class="stat-title text-xs">"Ejercicio"</div>
+                        <div class="stat-title text-xs">{move_tr!("summary-ejercicio")}</div>
                         <div class="stat-value text-2xl">{ejercicio}</div>
                     </div>
-                    // NIF
                     <div class="stat bg-base-200 rounded-box p-4">
-                        <div class="stat-title text-xs">"NIF Declarante"</div>
+                        <div class="stat-title text-xs">{move_tr!("summary-nif")}</div>
                         <div class="stat-value text-xl font-mono">{nif}</div>
                     </div>
-                    // Nombre
                     <div class="sm:col-span-2 stat bg-base-200 rounded-box p-4">
-                        <div class="stat-title text-xs">"Nombre / Razon Social"</div>
+                        <div class="stat-title text-xs">{move_tr!("summary-nombre")}</div>
                         <div class="stat-value text-lg">{nombre}</div>
                     </div>
                 </div>
                 <div class="divider my-2"></div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    // T2 declarado
                     <div class="text-center">
-                        <div class="text-xs text-base-content/50 mb-1">"T2 declarado"</div>
+                        <div class="text-xs text-base-content/50 mb-1">{move_tr!("summary-t2-declared")}</div>
                         <div class="text-xl font-bold font-mono">{t2_decl}</div>
                     </div>
-                    // T2 real
                     <div class="text-center">
-                        <div class="text-xs text-base-content/50 mb-1">"T2 real"</div>
+                        <div class="text-xs text-base-content/50 mb-1">{move_tr!("summary-t2-real")}</div>
                         <div class="flex items-center justify-center gap-2">
                             <span class="text-xl font-bold font-mono">{t2_real}</span>
                             <span class=t2_badge_class>{if t2_match { "OK" } else { "!=" }}</span>
                         </div>
                     </div>
-                    // Val1
                     <div class="text-center">
-                        <div class="text-xs text-base-content/50 mb-1">"Valoracion 1"</div>
+                        <div class="text-xs text-base-content/50 mb-1">{move_tr!("summary-val1")}</div>
                         <div class="text-lg font-semibold font-mono">{val1}</div>
                     </div>
-                    // Val2
                     <div class="text-center">
-                        <div class="text-xs text-base-content/50 mb-1">"Valoracion 2"</div>
+                        <div class="text-xs text-base-content/50 mb-1">{move_tr!("summary-val2")}</div>
                         <div class="text-lg font-semibold font-mono">{val2}</div>
                     </div>
                 </div>
@@ -398,7 +406,7 @@ fn format_currency(val: f64) -> String {
     format_eur(val)
 }
 
-// ── RecordsTable helpers ──────────────────────────────────────────────────────
+// ── RecordsTable ──────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum SortCol {
@@ -411,23 +419,14 @@ enum SortCol {
     Val2,
 }
 
-fn clave_label(c: char) -> (&'static str, &'static str, &'static str) {
+fn clave_label(c: char) -> (&'static str, &'static str) {
     match c {
-        'C' => ("C", "Cuenta bancaria", "badge-info"),
-        'V' => ("V", "Valores mobiliarios", "badge-secondary"),
-        'I' => ("I", "Inst. colectiva inversión", "badge-accent"),
-        'S' => ("S", "Seguro / renta", "badge-warning"),
-        'B' => ("B", "Bien inmueble", "badge-success"),
-        _ => ("?", "Desconocido", "badge-ghost"),
-    }
-}
-
-fn origen_label(c: char) -> (&'static str, &'static str) {
-    match c {
-        'A' => ("A", "Alta"),
-        'M' => ("M", "Modificación"),
-        'C' => ("C", "Cancelación"),
-        _ => ("?", "Desconocido"),
+        'C' => ("C", "badge-info"),
+        'V' => ("V", "badge-secondary"),
+        'I' => ("I", "badge-accent"),
+        'S' => ("S", "badge-warning"),
+        'B' => ("B", "badge-success"),
+        _ => ("?", "badge-ghost"),
     }
 }
 
@@ -438,8 +437,6 @@ fn format_fecha(s: &str) -> String {
         "—".to_string()
     }
 }
-
-// ── RecordsTable component ────────────────────────────────────────────────────
 
 #[component]
 fn RecordsTable(records: Vec<T2Detail>) -> impl IntoView {
@@ -452,7 +449,6 @@ fn RecordsTable(records: Vec<T2Detail>) -> impl IntoView {
     let sort_asc = RwSignal::new(true);
     let stored = StoredValue::new(records);
 
-    // Sorted snapshot, recomputed whenever sort state changes.
     let sorted = Memo::new(move |_| {
         let mut v = stored.get_value();
         let col = sort_col.get();
@@ -481,7 +477,6 @@ fn RecordsTable(records: Vec<T2Detail>) -> impl IntoView {
         v
     });
 
-    // Click handler for a column header.
     let toggle = move |col: SortCol| {
         move |_| {
             if sort_col.get_untracked() == col {
@@ -493,127 +488,92 @@ fn RecordsTable(records: Vec<T2Detail>) -> impl IntoView {
         }
     };
 
-    // Reactive class for a header <th>.
     let th_cls = move |col: SortCol, extra: &'static str| {
         move || {
             format!(
                 "cursor-pointer select-none whitespace-nowrap {} {}",
-                if sort_col.get() == col {
-                    "text-primary"
-                } else {
-                    "opacity-60 hover:opacity-100"
-                },
+                if sort_col.get() == col { "text-primary" } else { "opacity-60 hover:opacity-100" },
                 extra
             )
         }
     };
 
-    // Reactive sort indicator.
     let icon = move |col: SortCol| {
-        move || {
-            if sort_col.get() != col {
-                " ↕"
-            } else if sort_asc.get() {
-                " ↑"
-            } else {
-                " ↓"
-            }
-        }
+        move || if sort_col.get() != col { " ↕" } else if sort_asc.get() { " ↑" } else { " ↓" }
     };
 
     view! {
         <div class="card bg-base-100 shadow-xl">
             <div class="card-body p-0">
                 <div class="flex items-center gap-3 px-6 pt-5 pb-3">
-                    <h3 class="font-semibold">"Registros declarados"</h3>
+                    <h3 class="font-semibold">{move_tr!("records-title")}</h3>
                     <span class="badge badge-ghost badge-sm">{count_str}</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="table table-sm">
                         <thead>
                             <tr class="text-xs uppercase tracking-wider">
-                                <th
-                                    class=th_cls(SortCol::Line, "")
-                                    on:click=toggle(SortCol::Line)
-                                >
-                                    "#" {icon(SortCol::Line)}
+                                <th class=th_cls(SortCol::Line, "") on:click=toggle(SortCol::Line)>
+                                    {move_tr!("records-col-line")} {icon(SortCol::Line)}
                                 </th>
-                                <th
-                                    class=th_cls(SortCol::Bien, "")
-                                    on:click=toggle(SortCol::Bien)
-                                >
-                                    "Bien" {icon(SortCol::Bien)}
+                                <th class=th_cls(SortCol::Bien, "") on:click=toggle(SortCol::Bien)>
+                                    {move_tr!("records-col-bien")} {icon(SortCol::Bien)}
                                 </th>
-                                <th
-                                    class=th_cls(SortCol::Pais, "")
-                                    on:click=toggle(SortCol::Pais)
-                                >
-                                    "País" {icon(SortCol::Pais)}
+                                <th class=th_cls(SortCol::Pais, "") on:click=toggle(SortCol::Pais)>
+                                    {move_tr!("records-col-pais")} {icon(SortCol::Pais)}
                                 </th>
-                                <th
-                                    class=th_cls(SortCol::Fecha, "")
-                                    on:click=toggle(SortCol::Fecha)
-                                >
-                                    "F. incorporación" {icon(SortCol::Fecha)}
+                                <th class=th_cls(SortCol::Fecha, "") on:click=toggle(SortCol::Fecha)>
+                                    {move_tr!("records-col-fecha")} {icon(SortCol::Fecha)}
                                 </th>
-                                <th
-                                    class=th_cls(SortCol::Origen, "")
-                                    on:click=toggle(SortCol::Origen)
-                                >
-                                    "Origen" {icon(SortCol::Origen)}
+                                <th class=th_cls(SortCol::Origen, "") on:click=toggle(SortCol::Origen)>
+                                    {move_tr!("records-col-origen")} {icon(SortCol::Origen)}
                                 </th>
-                                <th
-                                    class=th_cls(SortCol::Val1, "text-right")
-                                    on:click=toggle(SortCol::Val1)
-                                >
-                                    "Valoración 1" {icon(SortCol::Val1)}
+                                <th class=th_cls(SortCol::Val1, "text-right") on:click=toggle(SortCol::Val1)>
+                                    {move_tr!("records-col-val1")} {icon(SortCol::Val1)}
                                 </th>
-                                <th
-                                    class=th_cls(SortCol::Val2, "text-right")
-                                    on:click=toggle(SortCol::Val2)
-                                >
-                                    "Valoración 2" {icon(SortCol::Val2)}
+                                <th class=th_cls(SortCol::Val2, "text-right") on:click=toggle(SortCol::Val2)>
+                                    {move_tr!("records-col-val2")} {icon(SortCol::Val2)}
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             {move || {
-                                sorted
-                                    .get()
-                                    .into_iter()
-                                    .map(|r| {
-                                        let (clave_code, clave_tip, clave_class) = clave_label(
-                                            r.clave_bien,
-                                        );
-                                        let (origen_code, origen_tip) = origen_label(r.origen);
-                                        let badge_class = format!(
-                                            "badge badge-sm font-mono {}",
-                                            clave_class,
-                                        );
-                                        let val1 = format_currency(r.valoracion1);
-                                        let val2 = format_currency(r.valoracion2);
-                                        let fecha = format_fecha(&r.fecha_incorporacion);
-                                        view! {
-                                            <tr class="hover:bg-base-200 transition-colors">
-                                                <td class="font-mono text-xs text-base-content/40">
-                                                    {r.line}
-                                                </td>
-                                                <td>
-                                                    <span class=badge_class title=clave_tip>
-                                                        {format!("{}{}", clave_code, r.subclave)}
-                                                    </span>
-                                                </td>
-                                                <td class="font-mono text-xs">{r.codigo_pais}</td>
-                                                <td class="font-mono text-xs">{fecha}</td>
-                                                <td class="font-mono text-xs" title=origen_tip>
-                                                    {origen_code}
-                                                </td>
-                                                <td class="font-mono text-xs text-right">{val1}</td>
-                                                <td class="font-mono text-xs text-right">{val2}</td>
-                                            </tr>
-                                        }
-                                    })
-                                    .collect::<Vec<_>>()
+                                sorted.get().into_iter().map(|r| {
+                                    let (clave_code, clave_class) = clave_label(r.clave_bien);
+                                    let badge_class = format!("badge badge-sm font-mono {}", clave_class);
+                                    let clave_tip = match r.clave_bien {
+                                        'C' => tr!("bien-c"),
+                                        'V' => tr!("bien-v"),
+                                        'I' => tr!("bien-i"),
+                                        'S' => tr!("bien-s"),
+                                        'B' => tr!("bien-b"),
+                                        _ => tr!("bien-unknown"),
+                                    };
+                                    let (origen_code, origen_tip) = match r.origen {
+                                        'A' => ("A", tr!("origen-a")),
+                                        'M' => ("M", tr!("origen-m")),
+                                        'C' => ("C", tr!("origen-c")),
+                                        _ => ("?", tr!("origen-unknown")),
+                                    };
+                                    let val1 = format_currency(r.valoracion1);
+                                    let val2 = format_currency(r.valoracion2);
+                                    let fecha = format_fecha(&r.fecha_incorporacion);
+                                    view! {
+                                        <tr class="hover:bg-base-200 transition-colors">
+                                            <td class="font-mono text-xs text-base-content/40">{r.line}</td>
+                                            <td>
+                                                <span class=badge_class title=clave_tip>
+                                                    {format!("{}{}", clave_code, r.subclave)}
+                                                </span>
+                                            </td>
+                                            <td class="font-mono text-xs">{r.codigo_pais}</td>
+                                            <td class="font-mono text-xs">{fecha}</td>
+                                            <td class="font-mono text-xs" title=origen_tip>{origen_code}</td>
+                                            <td class="font-mono text-xs text-right">{val1}</td>
+                                            <td class="font-mono text-xs text-right">{val2}</td>
+                                        </tr>
+                                    }
+                                }).collect::<Vec<_>>()
                             }}
                         </tbody>
                     </table>
@@ -623,6 +583,8 @@ fn RecordsTable(records: Vec<T2Detail>) -> impl IntoView {
     }
     .into_any()
 }
+
+// ── ErrorList ─────────────────────────────────────────────────────────────────
 
 #[component]
 fn ErrorList(errors: Vec<ValidationError>) -> impl IntoView {
@@ -650,9 +612,7 @@ fn ErrorList(errors: Vec<ValidationError>) -> impl IntoView {
             let row_class = format!("hover:bg-base-200 transition-colors {}", severity_class);
             view! {
                 <tr class=row_class>
-                    <td>
-                        <span class=badge_class>{code}</span>
-                    </td>
+                    <td><span class=badge_class>{code}</span></td>
                     <td class="font-mono text-sm">{line}</td>
                     <td class="font-mono text-xs text-base-content/50">{field}</td>
                     <td class="text-sm">{message}</td>
@@ -665,17 +625,17 @@ fn ErrorList(errors: Vec<ValidationError>) -> impl IntoView {
         <div class="card bg-base-100 shadow-xl">
             <div class="card-body p-0">
                 <div class="flex items-center gap-3 px-6 pt-5 pb-3">
-                    <h3 class="font-semibold">"Errores"</h3>
+                    <h3 class="font-semibold">{move_tr!("errors-title")}</h3>
                     <span class="badge badge-error badge-sm">{count_str}</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="table table-sm">
                         <thead>
                             <tr class="text-xs uppercase tracking-wider">
-                                <th>"Codigo"</th>
-                                <th>"Linea"</th>
-                                <th>"Campo"</th>
-                                <th>"Descripcion"</th>
+                                <th>{move_tr!("list-col-code")}</th>
+                                <th>{move_tr!("list-col-line")}</th>
+                                <th>{move_tr!("list-col-field")}</th>
+                                <th>{move_tr!("list-col-description")}</th>
                             </tr>
                         </thead>
                         <tbody>{rows}</tbody>
@@ -686,6 +646,8 @@ fn ErrorList(errors: Vec<ValidationError>) -> impl IntoView {
     }
     .into_any()
 }
+
+// ── WarningList ───────────────────────────────────────────────────────────────
 
 #[component]
 fn WarningList(warnings: Vec<ValidationError>) -> impl IntoView {
@@ -702,9 +664,7 @@ fn WarningList(warnings: Vec<ValidationError>) -> impl IntoView {
             let message = e.message;
             view! {
                 <tr class="hover:bg-base-200 transition-colors bg-warning/5">
-                    <td>
-                        <span class="badge badge-warning badge-sm font-mono">{code}</span>
-                    </td>
+                    <td><span class="badge badge-warning badge-sm font-mono">{code}</span></td>
                     <td class="font-mono text-sm">{line}</td>
                     <td class="font-mono text-xs text-base-content/50">{field}</td>
                     <td class="text-sm">{message}</td>
@@ -717,17 +677,18 @@ fn WarningList(warnings: Vec<ValidationError>) -> impl IntoView {
         <div class="collapse collapse-arrow bg-base-100 shadow-xl">
             <input type="checkbox" />
             <div class="collapse-title font-semibold flex items-center gap-3">
-                "Avisos" <span class="badge badge-warning badge-sm">{count_str}</span>
+                {move_tr!("warnings-title")}
+                <span class="badge badge-warning badge-sm">{count_str}</span>
             </div>
             <div class="collapse-content p-0">
                 <div class="overflow-x-auto">
                     <table class="table table-sm">
                         <thead>
                             <tr class="text-xs uppercase tracking-wider">
-                                <th>"Codigo"</th>
-                                <th>"Linea"</th>
-                                <th>"Campo"</th>
-                                <th>"Descripcion"</th>
+                                <th>{move_tr!("list-col-code")}</th>
+                                <th>{move_tr!("list-col-line")}</th>
+                                <th>{move_tr!("list-col-field")}</th>
+                                <th>{move_tr!("list-col-description")}</th>
                             </tr>
                         </thead>
                         <tbody>{rows}</tbody>
