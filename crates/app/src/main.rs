@@ -98,7 +98,9 @@ fn Main() -> impl IntoView {
             </Show>
 
             // Results
-            <Show when=move || get_result.get().is_some()>
+            <Show when=move || {
+                get_result.get().is_some()
+            }>
                 {move || {
                     let r = get_result.get().unwrap();
                     view! {
@@ -108,8 +110,14 @@ fn Main() -> impl IntoView {
                                 error_count=r.errors.len()
                                 warning_count=r.warnings.len()
                             />
-                            {r.summary.as_ref().map(|s| view! { <SummaryPanel summary=s.clone() /> })}
-                            {r.summary.as_ref().map(|s| view! { <RecordsTable records=s.records.clone() /> })}
+                            {r
+                                .summary
+                                .as_ref()
+                                .map(|s| view! { <SummaryPanel summary=s.clone() /> })}
+                            {r
+                                .summary
+                                .as_ref()
+                                .map(|s| view! { <RecordsTable records=s.records.clone() /> })}
                             <ErrorList errors=r.errors.clone() />
                             <WarningList warnings=r.warnings.clone() />
                         </div>
@@ -271,16 +279,14 @@ fn DropZone(
 }
 
 fn read_file(file: web_sys::File, callback: impl FnOnce(Vec<u8>) + 'static) {
-    use gloo_file::callbacks::read_as_bytes;
     use gloo_file::File as GlooFile;
+    use gloo_file::callbacks::read_as_bytes;
 
     let gloo_file = GlooFile::from(file);
     // ReaderTask must be kept alive until the callback fires; dropping it aborts the read.
-    let task = read_as_bytes(&gloo_file, move |result| {
-        match result {
-            Ok(bytes) => callback(bytes),
-            Err(e) => leptos::logging::error!("Error leyendo fichero: {:?}", e),
-        }
+    let task = read_as_bytes(&gloo_file, move |result| match result {
+        Ok(bytes) => callback(bytes),
+        Err(e) => leptos::logging::error!("Error leyendo fichero: {:?}", e),
     });
     std::mem::forget(task);
 }
@@ -358,7 +364,11 @@ fn SummaryPanel(summary: validator720::FileSummary) -> impl IntoView {
     let val1 = format_currency(summary.suma_val1);
     let val2 = format_currency(summary.suma_val2);
     let t2_match = summary.total_registros_t2_declarado == summary.total_registros_t2_real;
-    let t2_badge_class = if t2_match { "badge badge-success badge-sm" } else { "badge badge-error badge-sm" };
+    let t2_badge_class = if t2_match {
+        "badge badge-success badge-sm"
+    } else {
+        "badge badge-error badge-sm"
+    };
 
     view! {
         <div class="card bg-base-100 shadow-xl">
@@ -383,22 +393,30 @@ fn SummaryPanel(summary: validator720::FileSummary) -> impl IntoView {
                 <div class="divider my-2"></div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div class="text-center">
-                        <div class="text-xs text-base-content/50 mb-1">{move_tr!("summary-t2-declared")}</div>
+                        <div class="text-xs text-base-content/50 mb-1">
+                            {move_tr!("summary-t2-declared")}
+                        </div>
                         <div class="text-xl font-bold font-mono">{t2_decl}</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-xs text-base-content/50 mb-1">{move_tr!("summary-t2-real")}</div>
+                        <div class="text-xs text-base-content/50 mb-1">
+                            {move_tr!("summary-t2-real")}
+                        </div>
                         <div class="flex items-center justify-center gap-2">
                             <span class="text-xl font-bold font-mono">{t2_real}</span>
                             <span class=t2_badge_class>{if t2_match { "OK" } else { "!=" }}</span>
                         </div>
                     </div>
                     <div class="text-center">
-                        <div class="text-xs text-base-content/50 mb-1">{move_tr!("summary-val1")}</div>
+                        <div class="text-xs text-base-content/50 mb-1">
+                            {move_tr!("summary-val1")}
+                        </div>
                         <div class="text-lg font-semibold font-mono">{val1}</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-xs text-base-content/50 mb-1">{move_tr!("summary-val2")}</div>
+                        <div class="text-xs text-base-content/50 mb-1">
+                            {move_tr!("summary-val2")}
+                        </div>
                         <div class="text-lg font-semibold font-mono">{val2}</div>
                     </div>
                 </div>
@@ -497,14 +515,26 @@ fn RecordsTable(records: Vec<T2Detail>) -> impl IntoView {
         move || {
             format!(
                 "cursor-pointer select-none whitespace-nowrap {} {}",
-                if sort_col.get() == col { "text-primary" } else { "opacity-60 hover:opacity-100" },
+                if sort_col.get() == col {
+                    "text-primary"
+                } else {
+                    "opacity-60 hover:opacity-100"
+                },
                 extra
             )
         }
     };
 
     let icon = move |col: SortCol| {
-        move || if sort_col.get() != col { " ↕" } else if sort_asc.get() { " ↑" } else { " ↓" }
+        move || {
+            if sort_col.get() != col {
+                " ↕"
+            } else if sort_asc.get() {
+                " ↑"
+            } else {
+                " ↓"
+            }
+        }
     };
 
     view! {
@@ -519,66 +549,96 @@ fn RecordsTable(records: Vec<T2Detail>) -> impl IntoView {
                         <thead>
                             <tr class="text-xs uppercase tracking-wider">
                                 <th class=th_cls(SortCol::Line, "") on:click=toggle(SortCol::Line)>
-                                    {move_tr!("records-col-line")} {icon(SortCol::Line)}
+                                    {move_tr!("records-col-line")}
+                                    {icon(SortCol::Line)}
                                 </th>
                                 <th class=th_cls(SortCol::Bien, "") on:click=toggle(SortCol::Bien)>
-                                    {move_tr!("records-col-bien")} {icon(SortCol::Bien)}
+                                    {move_tr!("records-col-bien")}
+                                    {icon(SortCol::Bien)}
                                 </th>
                                 <th class=th_cls(SortCol::Pais, "") on:click=toggle(SortCol::Pais)>
-                                    {move_tr!("records-col-pais")} {icon(SortCol::Pais)}
+                                    {move_tr!("records-col-pais")}
+                                    {icon(SortCol::Pais)}
                                 </th>
-                                <th class=th_cls(SortCol::Fecha, "") on:click=toggle(SortCol::Fecha)>
-                                    {move_tr!("records-col-fecha")} {icon(SortCol::Fecha)}
+                                <th
+                                    class=th_cls(SortCol::Fecha, "")
+                                    on:click=toggle(SortCol::Fecha)
+                                >
+                                    {move_tr!("records-col-fecha")}
+                                    {icon(SortCol::Fecha)}
                                 </th>
-                                <th class=th_cls(SortCol::Origen, "") on:click=toggle(SortCol::Origen)>
-                                    {move_tr!("records-col-origen")} {icon(SortCol::Origen)}
+                                <th
+                                    class=th_cls(SortCol::Origen, "")
+                                    on:click=toggle(SortCol::Origen)
+                                >
+                                    {move_tr!("records-col-origen")}
+                                    {icon(SortCol::Origen)}
                                 </th>
-                                <th class=th_cls(SortCol::Val1, "text-right") on:click=toggle(SortCol::Val1)>
-                                    {move_tr!("records-col-val1")} {icon(SortCol::Val1)}
+                                <th
+                                    class=th_cls(SortCol::Val1, "text-right")
+                                    on:click=toggle(SortCol::Val1)
+                                >
+                                    {move_tr!("records-col-val1")}
+                                    {icon(SortCol::Val1)}
                                 </th>
-                                <th class=th_cls(SortCol::Val2, "text-right") on:click=toggle(SortCol::Val2)>
-                                    {move_tr!("records-col-val2")} {icon(SortCol::Val2)}
+                                <th
+                                    class=th_cls(SortCol::Val2, "text-right")
+                                    on:click=toggle(SortCol::Val2)
+                                >
+                                    {move_tr!("records-col-val2")}
+                                    {icon(SortCol::Val2)}
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             {move || {
-                                sorted.get().into_iter().map(|r| {
-                                    let (clave_code, clave_class) = clave_label(r.clave_bien);
-                                    let badge_class = format!("badge badge-sm font-mono {}", clave_class);
-                                    let clave_tip = match r.clave_bien {
-                                        'C' => tr!("bien-c"),
-                                        'V' => tr!("bien-v"),
-                                        'I' => tr!("bien-i"),
-                                        'S' => tr!("bien-s"),
-                                        'B' => tr!("bien-b"),
-                                        _ => tr!("bien-unknown"),
-                                    };
-                                    let (origen_code, origen_tip) = match r.origen {
-                                        'A' => ("A", tr!("origen-a")),
-                                        'M' => ("M", tr!("origen-m")),
-                                        'C' => ("C", tr!("origen-c")),
-                                        _ => ("?", tr!("origen-unknown")),
-                                    };
-                                    let val1 = format_currency(r.valoracion1);
-                                    let val2 = format_currency(r.valoracion2);
-                                    let fecha = format_fecha(&r.fecha_incorporacion);
-                                    view! {
-                                        <tr class="hover:bg-base-200 transition-colors">
-                                            <td class="font-mono text-xs text-base-content/40">{r.line}</td>
-                                            <td>
-                                                <span class=badge_class title=clave_tip>
-                                                    {format!("{}{}", clave_code, r.subclave)}
-                                                </span>
-                                            </td>
-                                            <td class="font-mono text-xs">{r.codigo_pais}</td>
-                                            <td class="font-mono text-xs">{fecha}</td>
-                                            <td class="font-mono text-xs" title=origen_tip>{origen_code}</td>
-                                            <td class="font-mono text-xs text-right">{val1}</td>
-                                            <td class="font-mono text-xs text-right">{val2}</td>
-                                        </tr>
-                                    }
-                                }).collect::<Vec<_>>()
+                                sorted
+                                    .get()
+                                    .into_iter()
+                                    .map(|r| {
+                                        let (clave_code, clave_class) = clave_label(r.clave_bien);
+                                        let badge_class = format!(
+                                            "badge badge-sm font-mono {}",
+                                            clave_class,
+                                        );
+                                        let clave_tip = match r.clave_bien {
+                                            'C' => tr!("bien-c"),
+                                            'V' => tr!("bien-v"),
+                                            'I' => tr!("bien-i"),
+                                            'S' => tr!("bien-s"),
+                                            'B' => tr!("bien-b"),
+                                            _ => tr!("bien-unknown"),
+                                        };
+                                        let (origen_code, origen_tip) = match r.origen {
+                                            'A' => ("A", tr!("origen-a")),
+                                            'M' => ("M", tr!("origen-m")),
+                                            'C' => ("C", tr!("origen-c")),
+                                            _ => ("?", tr!("origen-unknown")),
+                                        };
+                                        let val1 = format_currency(r.valoracion1);
+                                        let val2 = format_currency(r.valoracion2);
+                                        let fecha = format_fecha(&r.fecha_incorporacion);
+                                        view! {
+                                            <tr class="hover:bg-base-200 transition-colors">
+                                                <td class="font-mono text-xs text-base-content/40">
+                                                    {r.line}
+                                                </td>
+                                                <td>
+                                                    <span class=badge_class title=clave_tip>
+                                                        {format!("{}{}", clave_code, r.subclave)}
+                                                    </span>
+                                                </td>
+                                                <td class="font-mono text-xs">{r.codigo_pais}</td>
+                                                <td class="font-mono text-xs">{fecha}</td>
+                                                <td class="font-mono text-xs" title=origen_tip>
+                                                    {origen_code}
+                                                </td>
+                                                <td class="font-mono text-xs text-right">{val1}</td>
+                                                <td class="font-mono text-xs text-right">{val2}</td>
+                                            </tr>
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()
                             }}
                         </tbody>
                     </table>
@@ -617,7 +677,9 @@ fn ErrorList(errors: Vec<ValidationError>) -> impl IntoView {
             let row_class = format!("hover:bg-base-200 transition-colors {}", severity_class);
             view! {
                 <tr class=row_class>
-                    <td><span class=badge_class>{code}</span></td>
+                    <td>
+                        <span class=badge_class>{code}</span>
+                    </td>
                     <td class="font-mono text-sm">{line}</td>
                     <td class="font-mono text-xs text-base-content/50">{field}</td>
                     <td class="text-sm">{message}</td>
@@ -669,7 +731,9 @@ fn WarningList(warnings: Vec<ValidationError>) -> impl IntoView {
             let message = e.message;
             view! {
                 <tr class="hover:bg-base-200 transition-colors bg-warning/5">
-                    <td><span class="badge badge-warning badge-sm font-mono">{code}</span></td>
+                    <td>
+                        <span class="badge badge-warning badge-sm font-mono">{code}</span>
+                    </td>
                     <td class="font-mono text-sm">{line}</td>
                     <td class="font-mono text-xs text-base-content/50">{field}</td>
                     <td class="text-sm">{message}</td>

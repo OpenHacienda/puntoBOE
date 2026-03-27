@@ -67,10 +67,9 @@ pub fn validate_tipo2(
 
     // E233: EJERCICIO in T2 must match T1
     if record.ejercicio != t1.ejercicio {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E233",
             line,
-            (5, 8),
             "EJERCICIO",
             &format!(
                 "EJERCICIO en T2 ({}) != T1 ({})",
@@ -83,10 +82,9 @@ pub fn validate_tipo2(
     let nif_decl_t2 = field(raw, 9, 17);
     let nif_decl_t1 = field(&t1.raw, 9, 17);
     if nif_decl_t2 != nif_decl_t1 {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E201",
             line,
-            (9, 17),
             "NIF_DECLARANTE",
             &format!(
                 "NIF_DECLARANTE en T2 ({}) != T1 ({})",
@@ -99,10 +97,9 @@ pub fn validate_tipo2(
     // E202: NIF_DECLARADO (pos 18-26) must be valid
     let nif_declarado = field(raw, 18, 26);
     if !nif::validate_nif(&nif_declarado) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E202",
             line,
-            (18, 26),
             "NIF_DECLARADO",
             &format!("NIF_DECLARADO inválido: '{}'", nif_declarado.trim()),
         ));
@@ -111,10 +108,9 @@ pub fn validate_tipo2(
     // E203: APELLIDOS_NOMBRE_DECLARADO (pos 36-75) must not be empty
     let nombre = field(raw, 36, 75);
     if nombre.trim().is_empty() {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E203",
             line,
-            (36, 75),
             "APELLIDOS_NOMBRE_DECLARADO",
             "APELLIDOS_NOMBRE_DECLARADO vacío",
         ));
@@ -124,10 +120,9 @@ pub fn validate_tipo2(
     let clave_cond = char_at(raw, 76);
     let clave_cond_num = clave_cond.to_digit(10);
     if clave_cond_num.is_none() || clave_cond_num.unwrap() < 1 || clave_cond_num.unwrap() > 8 {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E204",
             line,
-            (76, 76),
             "CLAVE_CONDICION",
             &format!("CLAVE_CONDICION fuera de rango: '{}'", clave_cond),
         ));
@@ -136,10 +131,9 @@ pub fn validate_tipo2(
     // E205: TIPO_TITULARIDAD (pos 77-101) must be blank when condition != 8
     let tipo_tit = field(raw, 77, 101);
     if clave_cond != '8' && !is_blank(&tipo_tit) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E205",
             line,
-            (77, 101),
             "TIPO_TITULARIDAD",
             "TIPO_TITULARIDAD no vacío cuando condición != 8",
         ));
@@ -149,10 +143,9 @@ pub fn validate_tipo2(
     let clave_bien = char_at(raw, 102);
     let valid_bien = matches!(clave_bien, 'C' | 'V' | 'I' | 'S' | 'B');
     if !valid_bien {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E206",
             line,
-            (102, 102),
             "CLAVE_TIPO_BIEN",
             &format!("CLAVE_TIPO_BIEN inválida: '{}'", clave_bien),
         ));
@@ -170,10 +163,9 @@ pub fn validate_tipo2(
             _ => true,
         };
         if !valid_subclave {
-            errors.push(ValidationError::error_pos(
+            errors.push(ValidationError::error(
                 "E207",
                 line,
-                (103, 103),
                 "SUBCLAVE",
                 &format!(
                     "SUBCLAVE '{}' inválida para CLAVE_TIPO_BIEN '{}'",
@@ -185,10 +177,9 @@ pub fn validate_tipo2(
 
     // E208: SUBCLAVE must be '0' when CLAVE_TIPO_BIEN = 'I'
     if clave_bien == 'I' && subclave != '0' {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E208",
             line,
-            (103, 103),
             "SUBCLAVE",
             &format!(
                 "SUBCLAVE debe ser '0' para CLAVE_TIPO_BIEN 'I', encontrado '{}'",
@@ -200,10 +191,9 @@ pub fn validate_tipo2(
     // E209: CODIGO_PAIS (pos 129-130) must be ISO-3166
     let codigo_pais = field(raw, 129, 130);
     if !is_valid_country_code(&codigo_pais) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E209",
             line,
-            (129, 130),
             "CODIGO_PAIS",
             &format!("CODIGO_PAIS no es ISO-3166: '{}'", codigo_pais),
         ));
@@ -212,10 +202,9 @@ pub fn validate_tipo2(
     // E210: CLAVE_IDENTIFICACION (pos 131) must be 0, 1, or 2
     let clave_id = char_at(raw, 131);
     if !matches!(clave_id, '0' | '1' | '2') {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E210",
             line,
-            (131, 131),
             "CLAVE_IDENTIFICACION",
             &format!("CLAVE_IDENTIFICACION inválida: '{}'", clave_id),
         ));
@@ -223,10 +212,9 @@ pub fn validate_tipo2(
 
     // E211: CLAVE_IDENTIFICACION must be 0 when bien is C, S, B
     if matches!(clave_bien, 'C' | 'S' | 'B') && clave_id != '0' {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E211",
             line,
-            (131, 131),
             "CLAVE_IDENTIFICACION",
             &format!(
                 "CLAVE_IDENTIFICACION debe ser '0' para bien '{}', encontrado '{}'",
@@ -238,10 +226,9 @@ pub fn validate_tipo2(
     // E212: ISIN validation when CLAVE_IDENTIFICACION = 1
     let id_valores = field(raw, 132, 143);
     if clave_id == '1' && !validate_isin(&id_valores) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E212",
             line,
-            (132, 143),
             "IDENTIFICACION_VALORES",
             &format!("ISIN inválido: '{}'", id_valores.trim()),
         ));
@@ -251,10 +238,9 @@ pub fn validate_tipo2(
     // "No empieza por 'Z'" but this seems to mean it should NOT start with Z (likely a code
     // that starts with Z is reserved for ISINs). Let's implement as the spec says.
     if clave_id == '2' && id_valores.starts_with('Z') {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E213",
             line,
-            (132, 143),
             "IDENTIFICACION_VALORES",
             "IDENTIFICACION_VALORES empieza por 'Z' cuando CLAVE_IDENTIFICACION = 2",
         ));
@@ -262,10 +248,9 @@ pub fn validate_tipo2(
 
     // E214: IDENTIFICACION_VALORES must be blank for non V/I
     if !matches!(clave_bien, 'V' | 'I') && !is_blank(&id_valores) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E214",
             line,
-            (132, 143),
             "IDENTIFICACION_VALORES",
             "IDENTIFICACION_VALORES no en blanco para bien que no es V/I",
         ));
@@ -274,10 +259,9 @@ pub fn validate_tipo2(
     // E215: CLAVE_ID_CUENTA (pos 144) must be 'I' or 'O' for bien C
     let clave_id_cuenta = char_at(raw, 144);
     if clave_bien == 'C' && !matches!(clave_id_cuenta, 'I' | 'O') {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E215",
             line,
-            (144, 144),
             "CLAVE_ID_CUENTA",
             &format!(
                 "CLAVE_ID_CUENTA inválida para bien C: '{}'",
@@ -289,10 +273,9 @@ pub fn validate_tipo2(
     // E216: IDENTIFICACION_ENTIDAD (pos 190-230) must not be empty (except for B)
     let id_entidad = field(raw, 190, 230);
     if clave_bien != 'B' && id_entidad.trim().is_empty() {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E216",
             line,
-            (190, 230),
             "IDENTIFICACION_ENTIDAD",
             "IDENTIFICACION_ENTIDAD vacía (obligatoria salvo para bien B)",
         ));
@@ -301,18 +284,16 @@ pub fn validate_tipo2(
     // E217/E218: FECHA_INCORPORACION (pos 415-422)
     let fecha_inc = field(raw, 415, 422);
     if !is_numeric(&fecha_inc) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E217",
             line,
-            (415, 422),
             "FECHA_INCORPORACION",
             &format!("FECHA_INCORPORACION formato incorrecto: '{}'", fecha_inc),
         ));
     } else if !validate_date(&fecha_inc) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E218",
             line,
-            (415, 422),
             "FECHA_INCORPORACION",
             &format!("FECHA_INCORPORACION fecha inválida: '{}'", fecha_inc),
         ));
@@ -320,10 +301,9 @@ pub fn validate_tipo2(
 
     // E219: FECHA_INCORPORACION mandatory for C
     if clave_bien == 'C' && is_empty_date(&fecha_inc) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E219",
             line,
-            (415, 422),
             "FECHA_INCORPORACION",
             "FECHA_INCORPORACION obligatoria para bien C pero es ceros",
         ));
@@ -332,10 +312,9 @@ pub fn validate_tipo2(
     // E220: ORIGEN (pos 423) must be A, M, or C
     let origen = char_at(raw, 423);
     if !matches!(origen, 'A' | 'M' | 'C') {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E220",
             line,
-            (423, 423),
             "ORIGEN",
             &format!("ORIGEN debe ser A/M/C, encontrado '{}'", origen),
         ));
@@ -344,29 +323,26 @@ pub fn validate_tipo2(
     // E221/E222/E223: FECHA_EXTINCION (pos 424-431)
     let fecha_ext = field(raw, 424, 431);
     if origen == 'C' && is_empty_date(&fecha_ext) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E221",
             line,
-            (424, 431),
             "FECHA_EXTINCION",
             "FECHA_EXTINCION es ceros cuando ORIGEN=C",
         ));
     }
     if origen != 'C' && !is_empty_date(&fecha_ext) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E222",
             line,
-            (424, 431),
             "FECHA_EXTINCION",
             "FECHA_EXTINCION no es ceros cuando ORIGEN!=C",
         ));
     }
     if !is_empty_date(&fecha_ext) {
         if !is_numeric(&fecha_ext) || !validate_date(&fecha_ext) {
-            errors.push(ValidationError::error_pos(
+            errors.push(ValidationError::error(
                 "E223",
                 line,
-                (424, 431),
                 "FECHA_EXTINCION",
                 &format!("FECHA_EXTINCION inválida: '{}'", fecha_ext),
             ));
@@ -376,10 +352,9 @@ pub fn validate_tipo2(
     // E224: VALORACION1 (pos 433-446) must be numeric
     let val1 = field(raw, 433, 446);
     if !is_numeric(val1.trim()) && !is_blank(&val1) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E224",
             line,
-            (433, 446),
             "VALORACION1",
             &format!("VALORACION1 no numérica: '{}'", val1.trim()),
         ));
@@ -388,10 +363,9 @@ pub fn validate_tipo2(
     // E226: CLAVE_REPRESENT_VALORES (pos 462) must be A or B for V/I
     let clave_repr = char_at(raw, 462);
     if matches!(clave_bien, 'V' | 'I') && !matches!(clave_repr, 'A' | 'B') {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E226",
             line,
-            (462, 462),
             "CLAVE_REPRESENT_VALORES",
             &format!(
                 "CLAVE_REPRESENT_VALORES inválida para V/I: '{}'",
@@ -402,10 +376,9 @@ pub fn validate_tipo2(
 
     // E227: CLAVE_REPRESENT_VALORES must be blank for non V/I
     if !matches!(clave_bien, 'V' | 'I') && clave_repr != ' ' {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E227",
             line,
-            (462, 462),
             "CLAVE_REPRESENT_VALORES",
             "CLAVE_REPRESENT_VALORES no en blanco para bien que no es V/I",
         ));
@@ -414,10 +387,9 @@ pub fn validate_tipo2(
     // E228: NUM_VALORES (pos 463-474) must be numeric for V/I
     let num_val = field(raw, 463, 474);
     if matches!(clave_bien, 'V' | 'I') && !is_numeric(&num_val) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E228",
             line,
-            (463, 474),
             "NUM_VALORES",
             &format!("NUM_VALORES no numérico para V/I: '{}'", num_val.trim()),
         ));
@@ -425,10 +397,9 @@ pub fn validate_tipo2(
 
     // E229: NUM_VALORES must be zeros for non V/I
     if !matches!(clave_bien, 'V' | 'I') && !is_zeros(&num_val) && !is_blank(&num_val) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E229",
             line,
-            (463, 474),
             "NUM_VALORES",
             "NUM_VALORES no es ceros para bien que no es V/I",
         ));
@@ -437,10 +408,9 @@ pub fn validate_tipo2(
     // E230: CLAVE_TIPO_INMUEBLE (pos 475) must be U or R for B
     let clave_inm = char_at(raw, 475);
     if clave_bien == 'B' && !matches!(clave_inm, 'U' | 'R') {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E230",
             line,
-            (475, 475),
             "CLAVE_TIPO_INMUEBLE",
             &format!("CLAVE_TIPO_INMUEBLE inválida para B: '{}'", clave_inm),
         ));
@@ -451,10 +421,9 @@ pub fn validate_tipo2(
     if is_numeric(&pct_str) {
         let pct: u32 = pct_str.parse().unwrap_or(0);
         if pct > 10000 {
-            errors.push(ValidationError::error_pos(
+            errors.push(ValidationError::error(
                 "E231",
                 line,
-                (476, 480),
                 "PORCENTAJE_PARTICIPACION",
                 &format!(
                     "PORCENTAJE_PARTICIPACION fuera de rango: {} (max 100.00%)",
@@ -467,10 +436,9 @@ pub fn validate_tipo2(
     // E232: BLANCOS pos 481-500 must be all spaces
     let blancos = field(raw, 481, 500);
     if !is_blank(&blancos) {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E232",
             line,
-            (481, 500),
             "BLANCOS",
             "Posiciones 481-500 contienen caracteres no blancos",
         ));

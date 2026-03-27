@@ -30,8 +30,6 @@ pub struct FileSummary {
 #[derive(Debug, Clone, PartialEq)]
 pub struct T2Detail {
     pub line: usize,
-    pub nif_declarado: String,
-    pub nombre_declarado: String,
     /// C / V / I / S / B
     pub clave_bien: char,
     pub subclave: char,
@@ -47,7 +45,6 @@ pub struct T2Detail {
 pub struct ValidationError {
     pub code: String,
     pub line: usize,
-    pub position: Option<(usize, usize)>,
     pub field: String,
     pub message: String,
     pub severity: Severity,
@@ -65,18 +62,16 @@ impl ValidationError {
         Self {
             code: code.to_string(),
             line,
-            position: None,
             field: field.to_string(),
             message: message.to_string(),
             severity: Severity::Fatal,
         }
     }
 
-    fn error_pos(code: &str, line: usize, pos: (usize, usize), field: &str, message: &str) -> Self {
+    fn error(code: &str, line: usize, field: &str, message: &str) -> Self {
         Self {
             code: code.to_string(),
             line,
-            position: Some(pos),
             field: field.to_string(),
             message: message.to_string(),
             severity: Severity::Error,
@@ -87,7 +82,6 @@ impl ValidationError {
         Self {
             code: code.to_string(),
             line,
-            position: None,
             field: field.to_string(),
             message: message.to_string(),
             severity: Severity::Warning,
@@ -296,8 +290,6 @@ pub fn validate(bytes: &[u8]) -> ValidationResult {
             let raw = &r.raw;
             T2Detail {
                 line: r.line,
-                nif_declarado: parser::field(raw, 18, 26).trim().to_string(),
-                nombre_declarado: parser::field(raw, 36, 75).trim().to_string(),
                 clave_bien: parser::char_at(raw, 102),
                 subclave: parser::char_at(raw, 103),
                 codigo_pais: parser::field(raw, 129, 130),

@@ -15,10 +15,9 @@ pub fn validate_cross(
     let total_t2_declared: usize = total_t2_str.trim().parse().unwrap_or(0);
     let total_t2_real = t2_records.len();
     if total_t2_declared != total_t2_real {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E107",
             t1.line,
-            (136, 144),
             "TOTAL_REGISTROS_T2",
             &format!(
                 "TOTAL_REGISTROS_T2 declarado ({}) != real ({})",
@@ -43,10 +42,9 @@ pub fn validate_cross(
     }
 
     if val1_t1 != sum_val1 {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E108",
             t1.line,
-            (145, 162),
             "SUMA_VAL1",
             &format!(
                 "SUMA_VAL1 declarada ({}) != suma real ({})",
@@ -71,10 +69,9 @@ pub fn validate_cross(
     }
 
     if val2_t1 != sum_val2 {
-        errors.push(ValidationError::error_pos(
+        errors.push(ValidationError::error(
             "E109",
             t1.line,
-            (163, 180),
             "SUMA_VAL2",
             &format!(
                 "SUMA_VAL2 declarada ({}) != suma real ({})",
