@@ -88,3 +88,14 @@ Tu fichero **nunca sale de tu navegador**. Toda la validación ocurre en WebAsse
 ## Licencia
 
 MIT
+
+---
+
+## Un proyecto de OpenHacienda
+
+**puntoBOE** forma parte de [OpenHacienda](https://github.com/OpenHacienda), una organización que desarrolla herramientas abiertas para interactuar con la administración pública española.
+
+Otros proyectos:
+
+- [**llave**](https://github.com/OpenHacienda/llave) — Implementación open-source del sistema Cl@ve PIN / Cl@ve Móvil. CLI y clientes Flutter sobre un núcleo Rust compartido.
+- [**website**](https://github.com/OpenHacienda/website) — Documentación y página del proyecto.
