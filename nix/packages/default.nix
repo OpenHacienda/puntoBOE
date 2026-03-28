@@ -57,7 +57,7 @@ pkgs.stdenv.mkDerivation {
     export TRUNK_CACHE_DIR=$(mktemp -d)
 
     cd crates/app
-    trunk build --release --dist "$out"
+    trunk build --release --public-url "/puntoBOE/" --dist "$out"
 
     runHook postBuild
   '';
