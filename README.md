@@ -85,12 +85,6 @@ Tu fichero **nunca sale de tu navegador**. Toda la validación ocurre en WebAsse
 - [Orden HAP/72/2013](https://www.boe.es/buscar/act.php?id=BOE-A-2013-842) — regulación del Modelo 720
 - [Diseño de registro oficial (PDF)](https://sede.agenciatributaria.gob.es/static_files/Sede/Disenyo_registro/DR_Resto_Mod/archivos/modelo_720.pdf)
 
-## Licencia
-
-MIT
-
----
-
 ## Un proyecto de OpenHacienda
 
 **puntoBOE** forma parte de [OpenHacienda](https://github.com/OpenHacienda), una organización que desarrolla herramientas abiertas para interactuar con la administración pública española.
@@ -99,3 +93,7 @@ Otros proyectos:
 
 - [**llave**](https://github.com/OpenHacienda/llave) — Implementación open-source del sistema Cl@ve PIN / Cl@ve Móvil. CLI y clientes Flutter sobre un núcleo Rust compartido.
 - [**website**](https://github.com/OpenHacienda/website) — Documentación y página del proyecto.
+
+## Licencia
+
+MIT
