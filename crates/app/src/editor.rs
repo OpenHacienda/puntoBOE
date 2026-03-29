@@ -4,6 +4,7 @@ use leptos::*;
 use leptos_fluent::move_tr;
 use validator720::validate;
 use wasm_bindgen::JsCast;
+use std::collections::HashSet;
 use web_sys::{DragEvent, Event, HtmlInputElement, HtmlSelectElement};
 
 use crate::{StatusBadge, format_currency, read_file, trigger_download};
@@ -53,8 +54,12 @@ pub fn EditorPage() -> impl IntoView {
     let drag_src: RwSignal<Option<u64>> = RwSignal::new(None);
     let drag_over: RwSignal<Option<u64>> = RwSignal::new(None);
 
-    // Collapse-all mode
-    let collapse_all: RwSignal<bool> = RwSignal::new(false);
+    // Collapse state — set of row ids that are currently collapsed
+    let collapsed_ids: RwSignal<HashSet<u64>> = RwSignal::new(HashSet::new());
+    let all_collapsed = Memo::new(move |_| {
+        let recs = records.get();
+        !recs.is_empty() && recs.iter().all(|(id, _)| collapsed_ids.get().contains(id))
+    });
 
     // Import handler
     let on_import = move |_name: String, bytes: Vec<u8>| {
@@ -130,10 +135,17 @@ pub fn EditorPage() -> impl IntoView {
                         <div class="flex items-center gap-2">
                         <button
                             class="btn btn-ghost btn-sm gap-1.5"
-                            title=move || if collapse_all.get() { "Expandir todo" } else { "Colapsar todo" }
-                            on:click=move |_| collapse_all.update(|v| *v = !*v)
+                            title=move || if all_collapsed.get() { "Expandir todo" } else { "Colapsar todo" }
+                            on:click=move |_| {
+                                if all_collapsed.get() {
+                                    collapsed_ids.update(|s| s.clear());
+                                } else {
+                                    let ids: HashSet<u64> = records.get_untracked().iter().map(|(id, _)| *id).collect();
+                                    collapsed_ids.set(ids);
+                                }
+                            }
                         >
-                            {move || if collapse_all.get() {
+                            {move || if all_collapsed.get() {
                                 view! {
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
@@ -158,13 +170,13 @@ pub fn EditorPage() -> impl IntoView {
                         </div>
                     </div>
                     <div class="space-y-4">
-                        {move || {
-                            records.get().into_iter().map(|(id, fields)| {
-                                view! {
-                                    <Tipo2RecordRow id=id fields=fields records=records drag_src=drag_src drag_over=drag_over collapse_all=collapse_all />
-                                }
-                            }).collect_view()
-                        }}
+                        <For
+                            each={move || records.get().iter().map(|(id, _)| *id).collect::<Vec<u64>>()}
+                            key={|id| *id}
+                            let(id)
+                        >
+                            <Tipo2RecordRow id=id records=records drag_src=drag_src drag_over=drag_over collapsed_ids=collapsed_ids />
+                        </For>
                     </div>
                     <Show when=move || records.get().is_empty()>
                         <div class="text-center py-8 text-base-content/30 text-sm">
@@ -436,14 +448,24 @@ fn Tipo1Form(t1: RwSignal<Tipo1Fields>) -> impl IntoView {
 #[component]
 fn Tipo2RecordRow(
     id: u64,
-    fields: Tipo2Fields,
     records: RwSignal<Vec<(u64, Tipo2Fields)>>,
     drag_src: RwSignal<Option<u64>>,
     drag_over: RwSignal<Option<u64>>,
-    collapse_all: RwSignal<bool>,
+    collapsed_ids: RwSignal<HashSet<u64>>,
 ) -> impl IntoView {
-    let open = RwSignal::new(true);
-    let show_body = move || open.get() && !collapse_all.get();
+    // Reactive snapshot of this row’s fields — re-derives whenever records changes
+    // without remounting the component, keeping focus alive while typing.
+    let row = Memo::new(move |_| {
+        records.with(|v| {
+            v.iter()
+                .find(|(i, _)| *i == id)
+                .map(|(_, f)| f.clone())
+                .unwrap_or_default()
+        })
+    });
+
+    let show_body = move || !collapsed_ids.get().contains(&id);
+
     // Helper: update a single field in this row by id
     macro_rules! upd {
         ($field:ident, $val:expr) => {{
@@ -456,17 +478,7 @@ fn Tipo2RecordRow(
         }};
     }
 
-    // Header badge for collapsed summary
-    let bien = fields.clave_tipo_bien;
-    let sub = fields.subclave;
-    let nombre_preview = if fields.nombre_declarado.is_empty() {
-        format!("Registro {}", id + 1)
-    } else {
-        fields.nombre_declarado.clone()
-    };
-    let val1_preview = format_currency(fields.valoracion1);
-
-    let badge_class = match bien {
+    let badge_class = move || match row.with(|r| r.clave_tipo_bien) {
         'C' => "badge badge-info badge-sm font-mono",
         'V' => "badge badge-secondary badge-sm font-mono",
         'I' => "badge badge-accent badge-sm font-mono",
@@ -491,11 +503,6 @@ fn Tipo2RecordRow(
                 ev.prevent_default();
                 if drag_src.get_untracked().is_some() {
                     drag_over.set(Some(id));
-                }
-            }
-            on:dragleave=move |_| {
-                if drag_over.get_untracked() == Some(id) {
-                    drag_over.set(None);
                 }
             }
             on:drop=move |ev: DragEvent| {
@@ -546,15 +553,20 @@ fn Tipo2RecordRow(
                 <button
                     class="btn btn-ghost btn-xs opacity-40 hover:opacity-80 shrink-0"
                     title=move || if show_body() { "Colapsar" } else { "Expandir" }
-                    on:click=move |_| open.update(|v| *v = !*v)
+                    on:click=move |_| collapsed_ids.update(|s| {
+                        if s.contains(&id) { s.remove(&id); } else { s.insert(id); }
+                    })
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform" style=move || if show_body() { "" } else { "transform:rotate(-90deg)" } fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
-                <span class=badge_class>{format!("{}{}", bien, sub)}</span>
-                <span class="text-sm font-medium flex-1 truncate">{nombre_preview}</span>
-                <span class="text-xs font-mono text-base-content/50">{val1_preview}</span>
+                <span class=badge_class>{move || row.with(|r| format!("{}{}", r.clave_tipo_bien, r.subclave))}</span>
+                <span class="text-sm font-medium flex-1 truncate">{move || row.with(|r|
+                    if r.nombre_declarado.is_empty() { format!("Registro {}", id + 1) }
+                    else { r.nombre_declarado.clone() }
+                )}</span>
+                <span class="text-xs font-mono text-base-content/50">{move || format_currency(row.with(|r| r.valoracion1))}</span>
                 <button
                     class="btn btn-ghost btn-xs opacity-50 hover:opacity-100"
                     title="Mover arriba"
@@ -616,7 +628,7 @@ fn Tipo2RecordRow(
                     <input
                         type="text" maxlength="9"
                         class="input input-bordered input-xs font-mono uppercase"
-                        prop:value=fields.nif_declarado.clone()
+                        prop:value=move || row.with(|r| r.nif_declarado.clone())
                         on:input=move |ev| upd!(nif_declarado, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -629,7 +641,7 @@ fn Tipo2RecordRow(
                     <input
                         type="text" maxlength="40"
                         class="input input-bordered input-xs uppercase"
-                        prop:value=fields.nombre_declarado.clone()
+                        prop:value=move || row.with(|r| r.nombre_declarado.clone())
                         on:input=move |ev| upd!(nombre_declarado, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -641,7 +653,7 @@ fn Tipo2RecordRow(
                     </label>
                     <select
                         class="select select-bordered select-xs"
-                        prop:value=fields.clave_condicion.to_string()
+                        prop:value=move || row.with(|r| r.clave_condicion.to_string())
                         on:change=move |ev| {
                             let c = select_val(&ev).chars().next().unwrap_or('1');
                             upd!(clave_condicion, c);
@@ -670,7 +682,7 @@ fn Tipo2RecordRow(
                     </label>
                     <select
                         class="select select-bordered select-xs"
-                        prop:value=fields.clave_tipo_bien.to_string()
+                        prop:value=move || row.with(|r| r.clave_tipo_bien.to_string())
                         on:change=move |ev| {
                             let c = select_val(&ev).chars().next().unwrap_or('C');
                             records.update(|v| {
@@ -706,8 +718,8 @@ fn Tipo2RecordRow(
                         <span class="label-text text-xs">{move_tr!("editor-field-subclave")}</span>
                     </label>
                     {move || {
-                        let bien = records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_tipo_bien).unwrap_or('C');
-                        let current_sub = records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.subclave).unwrap_or('1');
+                        let bien = row.with(|r| r.clave_tipo_bien);
+                        let current_sub = row.with(|r| r.subclave);
                         let options: Vec<(char, &str)> = match bien {
                             'C' => vec![
                                 ('1', "Cuenta corriente"),
@@ -761,7 +773,7 @@ fn Tipo2RecordRow(
                         type="text" maxlength="2"
                         placeholder="ES"
                         class="input input-bordered input-xs font-mono uppercase"
-                        prop:value=fields.codigo_pais.clone()
+                        prop:value=move || row.with(|r| r.codigo_pais.clone())
                         on:input=move |ev| upd!(codigo_pais, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -773,7 +785,7 @@ fn Tipo2RecordRow(
 
                 // Clave identificación valores (solo V/I)
                 {move || {
-                    let bien = records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_tipo_bien).unwrap_or('C');
+                    let bien = row.with(|r| r.clave_tipo_bien);
                     matches!(bien, 'V' | 'I').then(|| view! {
                         <>
                             <div class="form-control">
@@ -782,7 +794,7 @@ fn Tipo2RecordRow(
                                 </label>
                                 <select
                                     class="select select-bordered select-xs"
-                                    prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_identificacion.to_string()).unwrap_or_default()
+                                    prop:value=move || row.with(|r| r.clave_identificacion.to_string())
                                     on:change=move |ev| {
                                         let c = select_val(&ev).chars().next().unwrap_or('0');
                                         upd!(clave_identificacion, c);
@@ -801,7 +813,7 @@ fn Tipo2RecordRow(
                                     type="text" maxlength="12"
                                     placeholder="ISIN / código"
                                     class="input input-bordered input-xs font-mono uppercase"
-                                    prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.identificacion_valores.clone()).unwrap_or_default()
+                                    prop:value=move || row.with(|r| r.identificacion_valores.clone())
                                     on:input=move |ev| upd!(identificacion_valores, input_val(&ev).to_uppercase())
                                 />
                             </div>
@@ -811,7 +823,7 @@ fn Tipo2RecordRow(
 
                 // Clave ID cuenta + IBAN (solo C)
                 {move || {
-                    let bien = records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_tipo_bien).unwrap_or('C');
+                    let bien = row.with(|r| r.clave_tipo_bien);
                     (bien == 'C').then(|| view! {
                         <>
                             <div class="form-control">
@@ -820,7 +832,7 @@ fn Tipo2RecordRow(
                                 </label>
                                 <select
                                     class="select select-bordered select-xs"
-                                    prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_id_cuenta.to_string()).unwrap_or_default()
+                                    prop:value=move || row.with(|r| r.clave_id_cuenta.to_string())
                                     on:change=move |ev| {
                                         let c = select_val(&ev).chars().next().unwrap_or('I');
                                         upd!(clave_id_cuenta, c);
@@ -838,7 +850,7 @@ fn Tipo2RecordRow(
                                     type="text" maxlength="34"
                                     placeholder="CH9300762011623852957"
                                     class="input input-bordered input-xs font-mono uppercase"
-                                    prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.identificacion_cuenta.clone()).unwrap_or_default()
+                                    prop:value=move || row.with(|r| r.identificacion_cuenta.clone())
                                     on:input=move |ev| upd!(identificacion_cuenta, input_val(&ev).to_uppercase())
                                 />
                             </div>
@@ -850,7 +862,7 @@ fn Tipo2RecordRow(
                                     type="text" maxlength="11"
                                     placeholder="UBSWCHZH80A"
                                     class="input input-bordered input-xs font-mono uppercase"
-                                    prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.codigo_bic.clone()).unwrap_or_default()
+                                    prop:value=move || row.with(|r| r.codigo_bic.clone())
                                     on:input=move |ev| upd!(codigo_bic, input_val(&ev).to_uppercase())
                                 />
                             </div>
@@ -860,7 +872,7 @@ fn Tipo2RecordRow(
 
                 // Clave represent. + Num valores (solo V/I)
                 {move || {
-                    let bien = records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_tipo_bien).unwrap_or('C');
+                    let bien = row.with(|r| r.clave_tipo_bien);
                     matches!(bien, 'V' | 'I').then(|| view! {
                         <>
                             <div class="form-control">
@@ -869,7 +881,7 @@ fn Tipo2RecordRow(
                                 </label>
                                 <select
                                     class="select select-bordered select-xs"
-                                    prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_represent_valores.to_string()).unwrap_or_default()
+                                    prop:value=move || row.with(|r| r.clave_represent_valores.to_string())
                                     on:change=move |ev| {
                                         let c = select_val(&ev).chars().next().unwrap_or('A');
                                         upd!(clave_represent_valores, c);
@@ -886,7 +898,7 @@ fn Tipo2RecordRow(
                                 <input
                                     type="number" min="0"
                                     class="input input-bordered input-xs font-mono"
-                                    prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.num_valores.to_string()).unwrap_or_default()
+                                    prop:value=move || row.with(|r| r.num_valores.to_string())
                                     on:input=move |ev| {
                                         let n: u64 = input_val(&ev).parse().unwrap_or(0);
                                         upd!(num_valores, n);
@@ -899,7 +911,7 @@ fn Tipo2RecordRow(
 
                 // Clave tipo inmueble (solo B)
                 {move || {
-                    let bien = records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_tipo_bien).unwrap_or('C');
+                    let bien = row.with(|r| r.clave_tipo_bien);
                     (bien == 'B').then(|| view! {
                         <div class="form-control">
                             <label class="label pb-1">
@@ -907,7 +919,7 @@ fn Tipo2RecordRow(
                             </label>
                             <select
                                 class="select select-bordered select-xs"
-                                prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.clave_tipo_inmueble.to_string()).unwrap_or_default()
+                                prop:value=move || row.with(|r| r.clave_tipo_inmueble.to_string())
                                 on:change=move |ev| {
                                     let c = select_val(&ev).chars().next().unwrap_or('U');
                                     upd!(clave_tipo_inmueble, c);
@@ -932,7 +944,7 @@ fn Tipo2RecordRow(
                     <input
                         type="text" maxlength="41"
                         class="input input-bordered input-xs uppercase"
-                        prop:value=fields.identificacion_entidad.clone()
+                        prop:value=move || row.with(|r| r.identificacion_entidad.clone())
                         on:input=move |ev| upd!(identificacion_entidad, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -944,7 +956,7 @@ fn Tipo2RecordRow(
                     <input
                         type="text" maxlength="20"
                         class="input input-bordered input-xs font-mono uppercase"
-                        prop:value=fields.nif_fiscal_pais.clone()
+                        prop:value=move || row.with(|r| r.nif_fiscal_pais.clone())
                         on:input=move |ev| upd!(nif_fiscal_pais, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -956,7 +968,7 @@ fn Tipo2RecordRow(
                     <input
                         type="text" maxlength="40"
                         class="input input-bordered input-xs uppercase"
-                        prop:value=fields.domicilio.clone()
+                        prop:value=move || row.with(|r| r.domicilio.clone())
                         on:input=move |ev| upd!(domicilio, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -968,7 +980,7 @@ fn Tipo2RecordRow(
                     <input
                         type="text" maxlength="30"
                         class="input input-bordered input-xs uppercase"
-                        prop:value=fields.localidad.clone()
+                        prop:value=move || row.with(|r| r.localidad.clone())
                         on:input=move |ev| upd!(localidad, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -980,7 +992,7 @@ fn Tipo2RecordRow(
                     <input
                         type="text" maxlength="30"
                         class="input input-bordered input-xs uppercase"
-                        prop:value=fields.municipio.clone()
+                        prop:value=move || row.with(|r| r.municipio.clone())
                         on:input=move |ev| upd!(municipio, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -992,7 +1004,7 @@ fn Tipo2RecordRow(
                     <input
                         type="text" maxlength="10"
                         class="input input-bordered input-xs font-mono"
-                        prop:value=fields.codigo_postal.clone()
+                        prop:value=move || row.with(|r| r.codigo_postal.clone())
                         on:input=move |ev| upd!(codigo_postal, input_val(&ev))
                     />
                 </div>
@@ -1005,7 +1017,7 @@ fn Tipo2RecordRow(
                         type="text" maxlength="2"
                         placeholder="CH"
                         class="input input-bordered input-xs font-mono uppercase"
-                        prop:value=fields.pais_domicilio.clone()
+                        prop:value=move || row.with(|r| r.pais_domicilio.clone())
                         on:input=move |ev| upd!(pais_domicilio, input_val(&ev).to_uppercase())
                     />
                 </div>
@@ -1022,7 +1034,7 @@ fn Tipo2RecordRow(
                     <input
                         type="date"
                         class="input input-bordered input-xs"
-                        prop:value=date_to_html(&fields.fecha_incorporacion)
+                        prop:value=move || row.with(|r| date_to_html(&r.fecha_incorporacion))
                         on:input=move |ev| upd!(fecha_incorporacion, html_to_date(&input_val(&ev)))
                     />
                 </div>
@@ -1033,7 +1045,7 @@ fn Tipo2RecordRow(
                     </label>
                     <select
                         class="select select-bordered select-xs"
-                        prop:value=fields.origen.to_string()
+                        prop:value=move || row.with(|r| r.origen.to_string())
                         on:change=move |ev| {
                             let c = select_val(&ev).chars().next().unwrap_or('A');
                             records.update(|v| {
@@ -1052,7 +1064,7 @@ fn Tipo2RecordRow(
 
                 // Fecha extinción (solo cuando origen = C)
                 {move || {
-                    let origen = records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| r.origen).unwrap_or('A');
+                    let origen = row.with(|r| r.origen);
                     (origen == 'C').then(|| view! {
                         <div class="form-control">
                             <label class="label pb-1">
@@ -1061,7 +1073,7 @@ fn Tipo2RecordRow(
                             <input
                                 type="date"
                                 class="input input-bordered input-xs"
-                                prop:value=records.get().iter().find(|(i, _)| *i == id).map(|(_, r)| date_to_html(&r.fecha_extincion)).unwrap_or_default()
+                                prop:value=move || row.with(|r| date_to_html(&r.fecha_extincion))
                                 on:input=move |ev| upd!(fecha_extincion, html_to_date(&input_val(&ev)))
                             />
                         </div>
@@ -1075,7 +1087,7 @@ fn Tipo2RecordRow(
                     <input
                         type="number" step="0.01" min="0"
                         class="input input-bordered input-xs font-mono"
-                        prop:value=format!("{:.2}", fields.valoracion1)
+                        prop:value=move || row.with(|r| format!("{:.2}", r.valoracion1))
                         on:input=move |ev| {
                             let v: f64 = input_val(&ev).parse().unwrap_or(0.0);
                             upd!(valoracion1, v);
@@ -1091,7 +1103,7 @@ fn Tipo2RecordRow(
                     <input
                         type="number" step="0.01" min="0"
                         class="input input-bordered input-xs font-mono"
-                        prop:value=format!("{:.2}", fields.valoracion2)
+                        prop:value=move || row.with(|r| format!("{:.2}", r.valoracion2))
                         on:input=move |ev| {
                             let v: f64 = input_val(&ev).parse().unwrap_or(0.0);
                             upd!(valoracion2, v);
@@ -1107,7 +1119,7 @@ fn Tipo2RecordRow(
                         <input
                             type="number" min="0" max="100" step="0.01"
                             class="w-full"
-                            prop:value=format!("{:.2}", fields.porcentaje_participacion as f64 / 100.0)
+                            prop:value=move || row.with(|r| format!("{:.2}", r.porcentaje_participacion as f64 / 100.0))
                             on:input=move |ev| {
                                 let pct: f64 = input_val(&ev).parse().unwrap_or(0.0);
                                 let n = (pct.clamp(0.0, 100.0) * 100.0).round() as u32;
