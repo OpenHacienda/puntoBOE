@@ -6,8 +6,10 @@ edition = "2021"
 [dependencies]
 leptos = { version = "0.7", features = ["csr"] }
 leptos_meta = "0.7"
+leptos_router = { version = "0.7" }
 leptos-fluent = "0.3"
 validator720 = { path = "../validator" }
+generator720 = { path = "../generator" }
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
   "File",
@@ -16,7 +18,14 @@ web-sys = { version = "0.3", features = [
   "DragEvent",
   "DataTransfer",
   "HtmlInputElement",
+  "HtmlSelectElement",
+  "HtmlAnchorElement",
   "Event",
   "EventTarget",
+  "Url",
+  "Blob",
+  "BlobPropertyBag",
+  "Document",
+  "HtmlElement",
 ] }
 gloo-file = "0.3"
