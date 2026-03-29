@@ -610,6 +610,7 @@ fn Tipo2RecordRow(
                     title="Eliminar registro"
                     on:click=move |_| {
                         records.update(|v| v.retain(|(i, _)| *i != id));
+                        collapsed_ids.update(|s| { s.remove(&id); });
                     }
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
