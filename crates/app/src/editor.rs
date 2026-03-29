@@ -94,17 +94,17 @@ pub fn EditorPage() -> impl IntoView {
     let add_record = move |_| {
         let id = next_id.get_untracked();
         next_id.update(|n| *n += 1);
-        // Pre-fill ejercicio-coherent defaults
         let ejercicio = t1.get_untracked().ejercicio.clone();
-        let nif_decl = t1.get_untracked().nif_declarante.clone();
+        // If all existing rows are collapsed, collapse the new one too
+        if all_collapsed.get_untracked() {
+            collapsed_ids.update(|s| { s.insert(id); });
+        }
         records.update(|v| {
             v.push((id, Tipo2Fields {
                 fecha_incorporacion: format!("{}0101", ejercicio),
                 ..Default::default()
             }));
         });
-        let _ = ejercicio;
-        let _ = nif_decl;
     };
 
     // Download handler
