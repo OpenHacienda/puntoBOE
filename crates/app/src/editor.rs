@@ -1,4 +1,12 @@
-use generator720::{Tipo1Fields, Tipo2Fields, generate_file, import_from_bytes};
+use generator720::{
+    Tipo1Fields, Tipo2Fields, generate_file, import_from_bytes,
+    BIEN_CUENTA, BIEN_VALORES, BIEN_IIC, BIEN_SEGURO, BIEN_INMUEBLE,
+    ORIGEN_ALTA, ORIGEN_MODIFICACION, ORIGEN_CANCELACION,
+    ID_VALORES_NINGUNA, ID_VALORES_ISIN, ID_VALORES_OTRO,
+    CUENTA_IBAN, CUENTA_OTRO,
+    REPR_NOMINATIVOS, REPR_AL_PORTADOR,
+    INMUEBLE_URBANO, INMUEBLE_RUSTICO,
+};
 use leptos::prelude::*;
 use leptos::*;
 use leptos_fluent::move_tr;
@@ -479,12 +487,12 @@ fn Tipo2RecordRow(
     }
 
     let badge_class = move || match row.with(|r| r.clave_tipo_bien) {
-        'C' => "badge badge-info badge-sm font-mono",
-        'V' => "badge badge-secondary badge-sm font-mono",
-        'I' => "badge badge-accent badge-sm font-mono",
-        'S' => "badge badge-warning badge-sm font-mono",
-        'B' => "badge badge-success badge-sm font-mono",
-        _ => "badge badge-ghost badge-sm font-mono",
+        BIEN_CUENTA   => "badge badge-info badge-sm font-mono",
+        BIEN_VALORES  => "badge badge-secondary badge-sm font-mono",
+        BIEN_IIC      => "badge badge-accent badge-sm font-mono",
+        BIEN_SEGURO   => "badge badge-warning badge-sm font-mono",
+        BIEN_INMUEBLE => "badge badge-success badge-sm font-mono",
+        _             => "badge badge-ghost badge-sm font-mono",
     };
 
     view! {
@@ -684,31 +692,37 @@ fn Tipo2RecordRow(
                         class="select select-bordered select-xs"
                         prop:value=move || row.with(|r| r.clave_tipo_bien.to_string())
                         on:change=move |ev| {
-                            let c = select_val(&ev).chars().next().unwrap_or('C');
+                            let c = select_val(&ev).chars().next().unwrap_or(BIEN_CUENTA);
                             records.update(|v| {
                                 if let Some((_, r)) = v.iter_mut().find(|(i, _)| *i == id) {
                                     r.clave_tipo_bien = c;
                                     // reset subclave to a sensible default
                                     r.subclave = match c {
-                                        'C' => '1', 'V' => '1', 'I' => '0',
-                                        'S' => '1', 'B' => '1', _ => '1',
+                                        BIEN_CUENTA | BIEN_VALORES | BIEN_SEGURO | BIEN_INMUEBLE => '1',
+                                        BIEN_IIC => '0',
+                                        _ => '1',
                                     };
                                     // reset clave_id_cuenta when not C
-                                    if c != 'C' { r.clave_id_cuenta = ' '; }
-                                    else { r.clave_id_cuenta = 'I'; }
+                                    if c != BIEN_CUENTA { r.clave_id_cuenta = ' '; }
+                                    else { r.clave_id_cuenta = CUENTA_IBAN; }
                                     // reset clave_represent_valores
-                                    r.clave_represent_valores = if matches!(c, 'V' | 'I') { 'A' } else { ' ' };
+                                    r.clave_represent_valores = if matches!(c, BIEN_VALORES | BIEN_IIC) { REPR_NOMINATIVOS } else { ' ' };
                                     // reset clave_tipo_inmueble
-                                    r.clave_tipo_inmueble = if c == 'B' { 'U' } else { ' ' };
+                                    r.clave_tipo_inmueble = if c == BIEN_INMUEBLE { INMUEBLE_URBANO } else { ' ' };
+                                    // reset identification fields when switching away from V/I
+                                    if !matches!(c, BIEN_VALORES | BIEN_IIC) {
+                                        r.clave_identificacion = ID_VALORES_NINGUNA;
+                                        r.identificacion_valores = String::new();
+                                    }
                                 }
                             });
                         }
                     >
-                        <option value="C">"Cuenta bancaria"</option>
-                        <option value="V">"Valores mobiliarios"</option>
-                        <option value="I">"Institución de Inversión Colectiva (IIC)"</option>
-                        <option value="S">"Seguro o renta"</option>
-                        <option value="B">"Bien inmueble"</option>
+                        <option value={BIEN_CUENTA.to_string()}>"Cuenta bancaria"</option>
+                        <option value={BIEN_VALORES.to_string()}>"Valores mobiliarios"</option>
+                        <option value={BIEN_IIC.to_string()}>"Institución de Inversión Colectiva (IIC)"</option>
+                        <option value={BIEN_SEGURO.to_string()}>"Seguro o renta"</option>
+                        <option value={BIEN_INMUEBLE.to_string()}>"Bien inmueble"</option>
                     </select>
                 </div>
 
@@ -721,24 +735,24 @@ fn Tipo2RecordRow(
                         let bien = row.with(|r| r.clave_tipo_bien);
                         let current_sub = row.with(|r| r.subclave);
                         let options: Vec<(char, &str)> = match bien {
-                            'C' => vec![
+                            BIEN_CUENTA => vec![
                                 ('1', "Cuenta corriente"),
                                 ('2', "Cuenta de ahorro"),
                                 ('3', "Plazo / depósito"),
                                 ('4', "Cuenta de crédito"),
                                 ('5', "Otras cuentas"),
                             ],
-                            'V' => vec![
+                            BIEN_VALORES => vec![
                                 ('1', "Acciones y otros valores"),
                                 ('2', "Acciones en IIC"),
                                 ('3', "Otros valores"),
                             ],
-                            'I' => vec![('0', "Participaciones en IIC")],
-                            'S' => vec![
+                            BIEN_IIC => vec![('0', "Participaciones en IIC")],
+                            BIEN_SEGURO => vec![
                                 ('1', "Seguro de vida"),
                                 ('2', "Renta temporal o vitalicia"),
                             ],
-                            'B' => vec![
+                            BIEN_INMUEBLE => vec![
                                 ('1', "Plena propiedad"),
                                 ('2', "Nuda propiedad"),
                                 ('3', "Derecho de usufructo"),
@@ -786,7 +800,7 @@ fn Tipo2RecordRow(
                 // Clave identificación valores (solo V/I)
                 {move || {
                     let bien = row.with(|r| r.clave_tipo_bien);
-                    matches!(bien, 'V' | 'I').then(|| view! {
+                    matches!(bien, BIEN_VALORES | BIEN_IIC).then(|| view! {
                         <>
                             <div class="form-control">
                                 <label class="label pb-1">
@@ -796,13 +810,13 @@ fn Tipo2RecordRow(
                                     class="select select-bordered select-xs"
                                     prop:value=move || row.with(|r| r.clave_identificacion.to_string())
                                     on:change=move |ev| {
-                                        let c = select_val(&ev).chars().next().unwrap_or('0');
+                                        let c = select_val(&ev).chars().next().unwrap_or(ID_VALORES_NINGUNA);
                                         upd!(clave_identificacion, c);
                                     }
                                 >
-                                    <option value="0">"Sin identificación"</option>
-                                    <option value="1">"ISIN"</option>
-                                    <option value="2">"Otro código"</option>
+                                    <option value={ID_VALORES_NINGUNA.to_string()}>"Sin identificación"</option>
+                                    <option value={ID_VALORES_ISIN.to_string()}>"ISIN"</option>
+                                    <option value={ID_VALORES_OTRO.to_string()}>"Otro código"</option>
                                 </select>
                             </div>
                             <div class="form-control">
@@ -824,7 +838,7 @@ fn Tipo2RecordRow(
                 // Clave ID cuenta + IBAN (solo C)
                 {move || {
                     let bien = row.with(|r| r.clave_tipo_bien);
-                    (bien == 'C').then(|| view! {
+                    (bien == BIEN_CUENTA).then(|| view! {
                         <>
                             <div class="form-control">
                                 <label class="label pb-1">
@@ -834,12 +848,12 @@ fn Tipo2RecordRow(
                                     class="select select-bordered select-xs"
                                     prop:value=move || row.with(|r| r.clave_id_cuenta.to_string())
                                     on:change=move |ev| {
-                                        let c = select_val(&ev).chars().next().unwrap_or('I');
+                                        let c = select_val(&ev).chars().next().unwrap_or(CUENTA_IBAN);
                                         upd!(clave_id_cuenta, c);
                                     }
                                 >
-                                    <option value="I">"IBAN"</option>
-                                    <option value="O">"Otro identificador"</option>
+                                    <option value={CUENTA_IBAN.to_string()}>"IBAN"</option>
+                                    <option value={CUENTA_OTRO.to_string()}>"Otro identificador"</option>
                                 </select>
                             </div>
                             <div class="form-control">
@@ -873,7 +887,7 @@ fn Tipo2RecordRow(
                 // Clave represent. + Num valores (solo V/I)
                 {move || {
                     let bien = row.with(|r| r.clave_tipo_bien);
-                    matches!(bien, 'V' | 'I').then(|| view! {
+                    matches!(bien, BIEN_VALORES | BIEN_IIC).then(|| view! {
                         <>
                             <div class="form-control">
                                 <label class="label pb-1">
@@ -883,12 +897,12 @@ fn Tipo2RecordRow(
                                     class="select select-bordered select-xs"
                                     prop:value=move || row.with(|r| r.clave_represent_valores.to_string())
                                     on:change=move |ev| {
-                                        let c = select_val(&ev).chars().next().unwrap_or('A');
+                                        let c = select_val(&ev).chars().next().unwrap_or(REPR_NOMINATIVOS);
                                         upd!(clave_represent_valores, c);
                                     }
                                 >
-                                    <option value="A">"Nominativos"</option>
-                                    <option value="B">"Al portador"</option>
+                                    <option value={REPR_NOMINATIVOS.to_string()}>"Nominativos"</option>
+                                    <option value={REPR_AL_PORTADOR.to_string()}>"Al portador"</option>
                                 </select>
                             </div>
                             <div class="form-control">
@@ -912,7 +926,7 @@ fn Tipo2RecordRow(
                 // Clave tipo inmueble (solo B)
                 {move || {
                     let bien = row.with(|r| r.clave_tipo_bien);
-                    (bien == 'B').then(|| view! {
+                    (bien == BIEN_INMUEBLE).then(|| view! {
                         <div class="form-control">
                             <label class="label pb-1">
                                 <span class="label-text text-xs">{move_tr!("editor-field-tipo-inmueble")}</span>
@@ -921,12 +935,12 @@ fn Tipo2RecordRow(
                                 class="select select-bordered select-xs"
                                 prop:value=move || row.with(|r| r.clave_tipo_inmueble.to_string())
                                 on:change=move |ev| {
-                                    let c = select_val(&ev).chars().next().unwrap_or('U');
+                                    let c = select_val(&ev).chars().next().unwrap_or(INMUEBLE_URBANO);
                                     upd!(clave_tipo_inmueble, c);
                                 }
                             >
-                                <option value="U">"Urbano"</option>
-                                <option value="R">"Rústico"</option>
+                                <option value={INMUEBLE_URBANO.to_string()}>"Urbano"</option>
+                                <option value={INMUEBLE_RUSTICO.to_string()}>"Rústico"</option>
                             </select>
                         </div>
                     })
@@ -1047,25 +1061,25 @@ fn Tipo2RecordRow(
                         class="select select-bordered select-xs"
                         prop:value=move || row.with(|r| r.origen.to_string())
                         on:change=move |ev| {
-                            let c = select_val(&ev).chars().next().unwrap_or('A');
+                            let c = select_val(&ev).chars().next().unwrap_or(ORIGEN_ALTA);
                             records.update(|v| {
                                 if let Some((_, r)) = v.iter_mut().find(|(i, _)| *i == id) {
                                     r.origen = c;
-                                    if c != 'C' { r.fecha_extincion = "00000000".to_string(); }
+                                    if c != ORIGEN_CANCELACION { r.fecha_extincion = "00000000".to_string(); }
                                 }
                             });
                         }
                     >
-                        <option value="A">{move_tr!("origen-a")}</option>
-                        <option value="M">{move_tr!("origen-m")}</option>
-                        <option value="C">{move_tr!("origen-c")}</option>
+                        <option value={ORIGEN_ALTA.to_string()}>{move_tr!("origen-a")}</option>
+                        <option value={ORIGEN_MODIFICACION.to_string()}>{move_tr!("origen-m")}</option>
+                        <option value={ORIGEN_CANCELACION.to_string()}>{move_tr!("origen-c")}</option>
                     </select>
                 </div>
 
                 // Fecha extinción (solo cuando origen = C)
                 {move || {
                     let origen = row.with(|r| r.origen);
-                    (origen == 'C').then(|| view! {
+                    (origen == ORIGEN_CANCELACION).then(|| view! {
                         <div class="form-control">
                             <label class="label pb-1">
                                 <span class="label-text text-xs">{move_tr!("editor-field-fecha-ext")}</span>

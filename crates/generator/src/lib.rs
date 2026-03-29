@@ -62,6 +62,37 @@
 
 use encoding_rs::WINDOWS_1252;
 
+// ── Field value constants ─────────────────────────────────────────────────────
+
+/// CLAVE_TIPO_BIEN
+pub const BIEN_CUENTA:   char = 'C';
+pub const BIEN_VALORES:  char = 'V';
+pub const BIEN_IIC:      char = 'I';
+pub const BIEN_SEGURO:   char = 'S';
+pub const BIEN_INMUEBLE: char = 'B';
+
+/// ORIGEN
+pub const ORIGEN_ALTA:         char = 'A';
+pub const ORIGEN_MODIFICACION: char = 'M';
+pub const ORIGEN_CANCELACION:  char = 'C';
+
+/// CLAVE_IDENTIFICACION (valores / IIC)
+pub const ID_VALORES_NINGUNA: char = '0';
+pub const ID_VALORES_ISIN:    char = '1';
+pub const ID_VALORES_OTRO:    char = '2';
+
+/// CLAVE_ID_CUENTA
+pub const CUENTA_IBAN: char = 'I';
+pub const CUENTA_OTRO: char = 'O';
+
+/// CLAVE_REPRESENT_VALORES
+pub const REPR_NOMINATIVOS: char = 'A';
+pub const REPR_AL_PORTADOR: char = 'B';
+
+/// CLAVE_TIPO_INMUEBLE
+pub const INMUEBLE_URBANO:  char = 'U';
+pub const INMUEBLE_RUSTICO: char = 'R';
+
 // ── Data structs ──────────────────────────────────────────────────────────────
 
 /// All editable fields for the Tipo 1 (header) record.
