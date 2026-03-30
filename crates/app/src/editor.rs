@@ -1104,7 +1104,7 @@ fn Tipo2RecordRow(
                         class="input input-bordered input-xs font-mono"
                         prop:value=move || row.with(|r| format!("{:.2}", r.valoracion1))
                         on:input=move |ev| {
-                            let v: f64 = input_val(&ev).parse().unwrap_or(0.0);
+                            let v = input_val(&ev).parse::<f64>().unwrap_or(0.0).max(0.0);
                             upd!(valoracion1, v);
                         }
                     />
@@ -1120,7 +1120,7 @@ fn Tipo2RecordRow(
                         class="input input-bordered input-xs font-mono"
                         prop:value=move || row.with(|r| format!("{:.2}", r.valoracion2))
                         on:input=move |ev| {
-                            let v: f64 = input_val(&ev).parse().unwrap_or(0.0);
+                            let v = input_val(&ev).parse::<f64>().unwrap_or(0.0).max(0.0);
                             upd!(valoracion2, v);
                         }
                     />
